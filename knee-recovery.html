@@ -1,0 +1,1842 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Knee Recovery Tracker</title>
+<meta name="theme-color" content="#0f1720">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" async></script>
+<style>
+:root{--bg:#0f1720;--panel:#162232;--panel2:#1e2c3f;--ink:#e7eef7;--muted:#8aa0b8;--accent:#4ea3ff;--good:#3ddc97;--warn:#ffb454;--bad:#ff6b6b;--line:#27384f}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{-webkit-text-size-adjust:100%}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+header{background:var(--panel);padding:14px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+header h1{font-size:17px;margin:0}
+header .meta{color:var(--muted);font-size:11px}
+nav{background:var(--panel2);padding:0 8px;display:flex;gap:2px;border-bottom:1px solid var(--line);overflow-x:auto;-webkit-overflow-scrolling:touch;flex-wrap:nowrap;scrollbar-width:none;-ms-overflow-style:none}
+nav::-webkit-scrollbar{display:none}
+nav button{background:transparent;color:var(--muted);border:none;padding:12px 14px;cursor:pointer;font:inherit;border-bottom:2px solid transparent;white-space:nowrap;min-height:44px;touch-action:manipulation}
+nav button.active{color:var(--ink);border-bottom-color:var(--accent)}
+nav button:hover{color:var(--ink)}
+main{padding:16px;max-width:1100px;margin:0 auto;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px))}
+section{display:none}section.active{display:block}
+h2{margin:6px 0 14px;font-size:18px}
+h3{margin:18px 0 8px;font-size:15px;color:var(--accent)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 14px;margin-bottom:14px}
+.row{display:flex;gap:12px;flex-wrap:wrap}.row>.card{flex:1 1 140px;min-width:0}
+.ex{display:flex;gap:10px;padding:10px 0;border-bottom:1px dashed var(--line);align-items:flex-start}
+.ex:last-child{border-bottom:none}
+.ex input[type=checkbox]{margin-top:3px;width:22px;height:22px;min-width:22px;accent-color:var(--good)}
+.ex .body{flex:1;min-width:0}.ex .name{font-weight:600}.ex .dose{color:var(--accent);font-size:12px;margin-left:6px}
+.ex .how{color:var(--muted);font-size:12px;margin-top:2px;word-wrap:break-word}
+.guide-link{color:var(--accent);font-size:12px;cursor:pointer;text-decoration:underline;margin-left:8px;padding:4px 2px;display:inline-block}
+label{display:block;font-size:13px;color:var(--muted);margin:8px 0 4px}
+input[type=number],input[type=text],input[type=date],select,textarea{width:100%;background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:10px 10px;font-size:16px;font-family:inherit;line-height:1.4}
+textarea{resize:vertical;min-height:60px}
+button.primary{background:var(--accent);color:#06121f;border:none;border-radius:6px;padding:12px 18px;font-weight:600;cursor:pointer;font-size:15px;min-height:44px;touch-action:manipulation}
+button.ghost{background:transparent;color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:10px 14px;cursor:pointer;min-height:44px;touch-action:manipulation;font-size:14px}
+button.danger{background:var(--bad);color:#fff;border:none;border-radius:6px;padding:10px 14px;cursor:pointer;min-height:44px;touch-action:manipulation}
+.pill{display:inline-block;padding:2px 8px;border-radius:99px;font-size:11px;background:var(--panel2);color:var(--muted);border:1px solid var(--line)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:8px 8px;border-bottom:1px solid var(--line)}
+th{color:var(--muted);font-weight:600;font-size:11px;white-space:nowrap}
+.gate{padding:10px 12px;border-left:3px solid var(--line);margin:6px 0}
+.gate.met{border-left-color:var(--good)}.gate.not{border-left-color:var(--bad)}
+.stat{display:flex;flex-direction:column;gap:2px;min-width:0}
+.stat .v{font-size:20px;font-weight:700;word-break:break-word}
+.stat .l{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+button,[data-action],.guide-link,.zone{touch-action:manipulation;cursor:pointer}
+canvas{max-width:100%;touch-action:pan-y}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.session-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+.session-head .progress{font-size:12px;color:var(--muted)}
+.date-bar{display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+.date-bar input[type=date]{width:auto;flex-shrink:1;min-width:130px}
+.date-bar button{padding:8px 12px;min-height:44px}
+.date-bar .day-label{font-size:14px;font-weight:600;width:100%}
+.guide-card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 14px;margin-bottom:18px;scroll-margin-top:60px}
+.guide-card h3{margin:0 0 6px}
+.guide-card .phase-badge{font-size:11px;color:var(--accent);margin-bottom:8px}
+.guide-card .section-title{font-size:13px;font-weight:700;color:var(--warn);margin:12px 0 4px}
+.guide-card ul{margin:4px 0 8px;padding-left:18px}
+.guide-card li{margin:3px 0;font-size:13px}
+.guide-card .diagram{display:flex;justify-content:center;margin:12px 0}
+.guide-card .diagram svg{max-width:320px;width:100%}
+.guide-card .tip{background:var(--panel2);border-left:3px solid var(--good);padding:8px 12px;margin:8px 0;font-size:12px;border-radius:0 6px 6px 0}
+.guide-card .warn-box{background:var(--panel2);border-left:3px solid var(--bad);padding:8px 12px;margin:8px 0;font-size:12px;border-radius:0 6px 6px 0}
+.guide-filter{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.guide-filter button{padding:8px 12px;font-size:13px;min-height:40px}
+.guide-filter button.active{background:var(--accent);color:#06121f;border-color:var(--accent)}
+.guide-search{margin-bottom:14px}
+.guide-search input{max-width:100%}
+/* ── Core tracker styles ── */
+.core-body-map{display:flex;justify-content:center;gap:16px;flex-wrap:wrap;margin-bottom:18px}
+.core-body-map svg{max-width:200px;width:45%}
+.core-body-map svg .zone{cursor:pointer;transition:opacity .2s}
+.core-group-card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 14px;margin-bottom:12px;scroll-margin-top:60px}
+.core-group-card h4{margin:0 0 4px;font-size:15px}
+.core-group-card .why{color:var(--muted);font-size:12px;margin:0 0 8px}
+.core-rating{display:flex;gap:6px;align-items:center;margin:6px 0;flex-wrap:wrap}
+.core-rating button{width:36px;height:36px;border-radius:50%;border:1px solid var(--line);background:var(--panel2);color:var(--muted);font-weight:700;cursor:pointer;font-size:14px;padding:0;touch-action:manipulation}
+.core-rating button.filled{background:var(--accent);color:#06121f;border-color:var(--accent)}
+.core-ex-item{display:flex;gap:10px;padding:8px 0;border-bottom:1px dashed var(--line);align-items:flex-start;font-size:13px}
+.core-ex-item:last-child{border-bottom:none}
+.core-ex-item input[type=checkbox]{accent-color:var(--good);width:22px;height:22px;min-width:22px;margin-top:2px}
+.core-ex-item .safe-badge{font-size:10px;padding:2px 6px;border-radius:99px;margin-left:4px;display:inline-block}
+.core-ex-item .safe-badge.ok{background:#1b3a2a;color:var(--good);border:1px solid #2a5a3a}
+.core-ex-item .safe-badge.caution{background:#3a2e1b;color:var(--warn);border:1px solid #5a4a2a}
+.core-stop-rule{background:var(--panel2);border-left:3px solid var(--warn);padding:8px 10px;margin:6px 0;font-size:12px;border-radius:0 6px 6px 0;color:var(--warn)}
+.core-tabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
+.core-tabs button{padding:10px 14px;font-size:13px;min-height:44px}
+.core-tabs button.active{background:var(--accent);color:#06121f;border-color:var(--accent)}
+.core-routine-card{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:12px;margin:8px 0}
+.radar-wrap{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-start}
+.radar-wrap canvas{max-width:300px;width:100%}
+/* ── Mobile breakpoint ── */
+@media(max-width:480px){
+  header{padding:10px 12px;gap:8px}
+  header h1{font-size:15px}
+  header .meta{font-size:10px}
+  main{padding:10px}
+  .card{padding:12px 10px}
+  .row>.card{flex:1 1 100%}
+  .stat .v{font-size:18px}
+  .stat .l{font-size:9px}
+  .grid2{grid-template-columns:1fr}
+  h2{font-size:16px}
+  .guide-card{padding:12px 10px}
+  .guide-card .diagram svg{max-width:100%}
+  .core-body-map svg{max-width:160px;width:42%}
+  .core-routine-card{padding:10px 8px}
+  .radar-wrap canvas{max-width:100%}
+  .radar-wrap{flex-direction:column}
+  .date-bar{gap:6px}
+  .date-bar button{padding:8px 10px;font-size:13px}
+  table{font-size:12px}
+  th,td{padding:6px 4px}
+  nav button{padding:10px 10px;font-size:13px}
+}
+</style>
+</head>
+<body>
+<header>
+<h1>&#x1F9B5; Knee Recovery Tracker</h1>
+<span class="meta">Patella fracture (4 fragments) &middot; 39 M &middot; Post-op tracker</span>
+<span style="margin-left:auto" class="meta">Phase: <b id="hdrPhase">&mdash;</b> &middot; Day: <b id="hdrDay">&mdash;</b></span>
+</header>
+<nav>
+<button type="button" data-tab="today" class="active">Today</button>
+<button type="button" data-tab="activities">Activities</button>
+<button type="button" data-tab="guide">Exercise Guide</button>
+<button type="button" data-tab="core">Core Training</button>
+<button type="button" data-tab="phase">Phase</button>
+<button type="button" data-tab="progress">Progress Log</button>
+<button type="button" data-tab="reports">Reports</button>
+<button type="button" data-tab="settings">Settings</button>
+</nav>
+<main>
+
+<section id="today" class="active">
+<div class="date-bar">
+<button type="button" class="ghost" data-action="shiftDay" data-arg="-1">&larr; Prev</button>
+<input type="date" id="selectedDate">
+<button type="button" class="ghost" data-action="shiftDay" data-arg="1">Next &rarr;</button>
+<button type="button" class="ghost" data-action="goToday">Today</button>
+<span class="day-label" id="todayDateLabel"></span>
+</div>
+<div id="todaySessions"></div>
+<div class="card">
+<h3>Daily Log</h3>
+<div class="grid2">
+<div><label>Max active flexion (degrees)</label><input type="number" id="logFlex" min="0" max="180" step="1"></div>
+<div><label>Extensor lag (degrees, 0=none)</label><input type="number" id="logLag" min="0" max="30" step="1" value="0"></div>
+<div><label>Pain at rest (0&ndash;10)</label><input type="number" id="logPainRest" min="0" max="10" step="1"></div>
+<div><label>Pain with activity (0&ndash;10)</label><input type="number" id="logPainAct" min="0" max="10" step="1"></div>
+<div><label>Swelling (0=none, 1=mild, 2=mod, 3=severe)</label><input type="number" id="logSwell" min="0" max="3" step="1"></div>
+<div><label>Crutch level</label><select id="logCrutch"><option value="2">2 crutches</option><option value="1">1 crutch</option><option value="0">No crutches</option></select></div>
+<div><label>Sleep (hours)</label><input type="number" id="logSleep" min="0" max="14" step="0.5"></div>
+<div><label>Single-leg stance (sec)</label><input type="number" id="logSls" min="0" max="120" step="1"></div>
+</div>
+<label>Notes</label>
+<textarea id="logNotes" placeholder="What felt different today?"></textarea>
+<div style="margin-top:12px;display:flex;gap:8px">
+<button type="button" class="primary" data-action="saveDay">Save log</button>
+<button type="button" class="ghost" data-action="loadSelectedDay">Reload</button>
+</div>
+<p id="saveMsg" style="color:var(--good);margin:8px 0 0;font-size:12px"></p>
+</div>
+</section>
+
+<section id="activities">
+<h2>All activities &mdash; <span id="actPhaseName"></span></h2>
+<p class="meta" style="color:var(--muted)">Automatically changes with phase. Click any exercise name to see the full guide.</p>
+<div id="actContent"></div>
+</section>
+
+<section id="guide">
+<h2>&#x1F4D6; Exercise Guide</h2>
+<div class="guide-search"><input type="text" id="guideSearch" placeholder="Search exercises..."></div>
+<div class="guide-filter">
+<button type="button" class="ghost active" data-gf="all" data-action="setGuideFilter" data-arg="all">All</button>
+<button type="button" class="ghost" data-gf="mobility" data-action="setGuideFilter" data-arg="mobility">Mobility</button>
+<button type="button" class="ghost" data-gf="strength" data-action="setGuideFilter" data-arg="strength">Strength</button>
+<button type="button" class="ghost" data-gf="core" data-action="setGuideFilter" data-arg="core">Core</button>
+<button type="button" class="ghost" data-gf="stretch" data-action="setGuideFilter" data-arg="stretch">Stretch</button>
+<button type="button" class="ghost" data-gf="cardio" data-action="setGuideFilter" data-arg="cardio">Cardio</button>
+</div>
+<div id="guideContent"></div>
+</section>
+
+<section id="core">
+<h2>&#x1F4AA; Core Training</h2>
+<p style="color:var(--muted);margin-bottom:14px">Functional core training safe for knee recovery. Grouped by movement pattern, not anatomy — each pattern targets multiple muscles.</p>
+<div class="core-tabs">
+<button type="button" class="ghost active" data-ct="overview" data-action="setCoreTab" data-arg="overview">Overview &amp; Map</button>
+<button type="button" class="ghost" data-ct="workout" data-action="setCoreTab" data-arg="workout">Today's Workout</button>
+<button type="button" class="ghost" data-ct="builder" data-action="setCoreTab" data-arg="builder">Routine Builder</button>
+<button type="button" class="ghost" data-ct="coreprogress" data-action="setCoreTab" data-arg="coreprogress">Progress</button>
+</div>
+
+<div id="coreOverview"></div>
+<div id="coreWorkout" style="display:none"></div>
+<div id="coreBuilder" style="display:none"></div>
+<div id="coreProgress" style="display:none"></div>
+</section>
+
+<section id="phase">
+<h2>Phase progression</h2>
+<div class="card">
+<div class="row">
+<div class="stat"><div class="l">Current phase</div><div class="v" id="phCurrent">&mdash;</div></div>
+<div class="stat"><div class="l">Phase started</div><div class="v" id="phStart">&mdash;</div></div>
+<div class="stat"><div class="l">Days in phase</div><div class="v" id="phDays">&mdash;</div></div>
+</div>
+<h3 style="margin-top:14px">Goals</h3><ul id="phGoals"></ul>
+<h3>Advancement gate (last 3 sessions must meet ALL)</h3><div id="phGates"></div>
+<div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
+<button type="button" class="primary" data-action="advancePhase">Advance to next phase</button>
+<button type="button" class="ghost" data-action="regressPhase">Step back</button>
+</div>
+<p id="phMsg" style="margin:8px 0 0;font-size:12px;color:var(--muted)"></p>
+</div>
+<div class="card"><h3>All phases</h3><table><thead><tr><th>Phase</th><th>Focus</th><th>Flexion</th><th>Gait</th></tr></thead><tbody id="phaseTable"></tbody></table></div>
+</section>
+
+<section id="progress">
+<h2>Progress log</h2>
+<div class="card">
+<div style="display:flex;gap:8px;margin-bottom:10px">
+<button type="button" class="ghost" data-action="exportCSV">Export CSV</button>
+<button type="button" class="danger" data-action="clearLogs">Clear</button>
+</div>
+<div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table id="logTable"><thead><tr><th>Date</th><th>Ph</th><th>Flex</th><th>Lag</th><th>PainR</th><th>PainA</th><th>Swell</th><th>Crutch</th><th>Sleep</th><th>SLS</th><th>Adh%</th><th>Notes</th></tr></thead><tbody></tbody></table></div>
+</div>
+</section>
+
+<section id="reports">
+<h2>Reports &amp; analysis</h2>
+<div class="row">
+<div class="card stat"><div class="l">Logged days</div><div class="v" id="rDays">&mdash;</div></div>
+<div class="card stat"><div class="l">Best flexion</div><div class="v" id="rBestFlex">&mdash;</div></div>
+<div class="card stat"><div class="l">7d avg flex</div><div class="v" id="rAvgFlex">&mdash;</div></div>
+<div class="card stat"><div class="l">7d avg pain</div><div class="v" id="rAvgPain">&mdash;</div></div>
+<div class="card stat"><div class="l">7d adherence</div><div class="v" id="rAdh">&mdash;</div></div>
+</div>
+<div class="card"><h3>Flexion over time</h3><canvas id="chFlex" height="120"></canvas></div>
+<div class="card"><h3>Pain trends</h3><canvas id="chPain" height="120"></canvas></div>
+<div class="card"><h3>Adherence</h3><canvas id="chAdh" height="120"></canvas></div>
+<div class="card"><h3>Auto-analysis</h3><div id="analysis"></div></div>
+</section>
+
+<section id="settings">
+<h2>Settings</h2>
+<div class="card">
+<label>Surgery / injury date</label><input type="date" id="setSurgery">
+<label style="margin-top:10px">Phase override</label>
+<select id="setPhase"><option value="1">Phase 1</option><option value="2">Phase 2</option><option value="3">Phase 3</option><option value="4">Phase 4</option></select>
+<label style="margin-top:10px">Phase started on</label><input type="date" id="setPhaseStart">
+<div style="margin-top:12px"><button type="button" class="primary" data-action="saveSettings">Save</button></div>
+<p id="setMsg" style="color:var(--good);font-size:12px;margin-top:8px"></p>
+</div>
+<div class="card"><h3>Backup</h3>
+<button type="button" class="ghost" data-action="exportBackup">Export JSON</button>
+<input type="file" id="importFile" accept="application/json" style="display:none">
+<button type="button" class="ghost" data-action="triggerImport">Import JSON</button>
+</div>
+</section>
+
+</main>
+<script>
+
+/* ── Global error trap (catches unhandled errors that try/catch misses) ── */
+window.onerror = function(msg, src, line, col, err){
+  var d = document.createElement('div');
+  d.style.cssText = 'background:#ff6b6b;color:#fff;padding:10px 14px;border-radius:8px;margin:10px 16px;font-size:13px;word-break:break-word';
+  d.textContent = '⚠️ JS Error: ' + msg + ' (line ' + line + ')';
+  var m = document.querySelector('main');
+  if(m) m.insertBefore(d, m.firstChild);
+};
+
+/* ── Feature detection ── */
+var _storageOK = (function(){
+  try{ localStorage.setItem('__t','1'); localStorage.removeItem('__t'); return true; }
+  catch(e){ return false; }
+})();
+
+/* ── constants ── */
+const LK_LOGS = "kr.logs.v1";
+const LK_SET  = "kr.settings.v1";
+
+/* ── Guide database ── */
+const GUIDE = {
+  "patellar-mobs":{
+    title:"Patellar Mobilizations",category:"mobility",phases:[1,2,3,4],
+    linkedIds:["p1.pmob","p2.pmob"],
+    overview:"Patellar mobilization is the #1 plateau breaker at 90° flexion. The patella must glide inferiorly (downward) for the knee to flex beyond 90°. After a fracture, scar tissue and guarding lock the patella in place.",
+    steps:["Sit with leg extended, quad fully relaxed","Cup kneecap gently between thumbs and fingers","Glide kneecap UP, DOWN, LEFT, RIGHT — 30s each direction","Spend extra time pushing DOWN (inferior) — this is the money direction for flexion","Press and hold each end-range glide 5–10s","Finish with small circles in each direction"],
+    tips:["Relax the quad — if the muscle is firing, the patella can't move","Use lotion or oil for less friction","Do immediately before flexion work for best effect","Grade pressure: firm but not painful, 4–5/10 force","Feel for end-range tissue stretch, not bone-on-bone"],
+    avoid:["Gripping/guarding the quad during mobilization","Pressing so hard it causes sharp pain","Rushing — slow sustained pressure changes tissue"],
+    progression:"Start with gentle oscillations (grade II). Progress to sustained end-range holds (grade III–IV) as comfort improves.",
+    diagram:'<svg viewBox="0 0 300 200" xmlns="http://www.w3.org/2000/svg"><defs><marker id="arr" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#4ea3ff"/></marker></defs><ellipse cx="150" cy="100" rx="35" ry="40" fill="#1e2c3f" stroke="#4ea3ff" stroke-width="2"/><text x="150" y="105" text-anchor="middle" fill="#e7eef7" font-size="12">Patella</text><line x1="150" y1="50" x2="150" y2="15" stroke="#4ea3ff" stroke-width="2" marker-end="url(#arr)"/><line x1="150" y1="150" x2="150" y2="185" stroke="#3ddc97" stroke-width="3" marker-end="url(#arr)"/><line x1="105" y1="100" x2="70" y2="100" stroke="#4ea3ff" stroke-width="2" marker-end="url(#arr)"/><line x1="195" y1="100" x2="230" y2="100" stroke="#4ea3ff" stroke-width="2" marker-end="url(#arr)"/><text x="150" y="197" text-anchor="middle" fill="#3ddc97" font-size="10" font-weight="bold">INFERIOR = KEY</text><text x="150" y="10" text-anchor="middle" fill="#4ea3ff" font-size="10">Superior</text><text x="55" y="104" text-anchor="middle" fill="#4ea3ff" font-size="10">Medial</text><text x="245" y="104" text-anchor="middle" fill="#4ea3ff" font-size="10">Lateral</text></svg>'
+  },
+  "heel-slides":{
+    title:"Heel Slides",category:"mobility",phases:[1,2,3,4],
+    linkedIds:["p1.hslide","p2.hslide"],
+    overview:"The workhorse of knee flexion ROM. Slide your heel toward your buttock to progressively gain flexion. Use a strap or towel to add gentle overpressure at end range.",
+    steps:["Lie on back with both knees bent, feet flat","Slowly slide the affected heel toward your buttock","Use a towel or belt looped around ankle to gently pull further at end range","Hold end range 5–10 seconds with mild stretch, not sharp pain","Slowly return to start","Use a plastic bag under heel on smooth surface to reduce friction"],
+    tips:["Warm up with patellar mobs first — you'll gain 5–10° immediately","Do after a hot shower when tissue is most pliable","Pull with the strap at a slow, steady rate, not jerky","Keep hips level — don't let the hip hike up","Track your max angle each session"],
+    avoid:["Bouncing or forcing through sharp pain","Letting the foot rotate outward (keep toes pointing up)","Stopping at first sensation of stretch — hold gentle stretch 5–10s"],
+    progression:"Phase 1: gravity-assisted. Phase 2: add towel overpressure 3–5° past comfort. Phase 3: progress to wall slides for more leverage.",
+    diagram:'<svg viewBox="0 0 300 120" xmlns="http://www.w3.org/2000/svg"><defs><marker id="arr2" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#4ea3ff"/></marker></defs><line x1="30" y1="90" x2="270" y2="90" stroke="#27384f" stroke-width="2"/><line x1="50" y1="88" x2="170" y2="88" stroke="#e7eef7" stroke-width="4" stroke-linecap="round"/><line x1="170" y1="88" x2="220" y2="40" stroke="#e7eef7" stroke-width="4" stroke-linecap="round"/><circle cx="220" cy="40" r="6" fill="#4ea3ff"/><path d="M220,40 Q240,85 190,88" stroke="#4ea3ff" stroke-width="2" fill="none" stroke-dasharray="5,4"/><line x1="220" y1="40" x2="160" y2="30" stroke="#3ddc97" stroke-width="2" marker-end="url(#arr2)"/><text x="140" y="22" fill="#3ddc97" font-size="10">Pull with strap</text><text x="175" y="65" fill="#4ea3ff" font-size="10">ROM arc</text><text x="50" y="106" fill="#8aa0b8" font-size="10">Slide heel toward glute</text></svg>'
+  },
+  "prone-hang":{
+    title:"Prone Hang (Extension)",category:"stretch",phases:[1,2,3,4],
+    linkedIds:["p1.proneh"],
+    overview:"Gravity-assisted terminal extension. Prevents flexion contracture and restores the last degrees of extension that are critical for a normal gait cycle.",
+    steps:["Lie face down on bed with kneecaps at the edge","Let both legs hang off the edge, fully relaxed","Gravity pulls the shins down, extending the knees","Hold 2–3 minutes per set","For extra stretch: add a 2–3 lb ankle weight"],
+    tips:["Do this BEFORE and AFTER every flexion session","Full extension is more important than full flexion for walking","Place a pillow under your thighs for comfort, NOT under the knee","Completely relax — don't fight the stretch"],
+    avoid:["Placing a pillow under the knee (promotes contracture)","Tensing the quad to push into extension — let gravity work","Doing this if you have an effusion > mild"],
+    progression:"Start with bodyweight only. Add 1–2 lb ankle weight after week 1 if tolerated. Progress to 5 lb by phase 3.",
+    diagram:'<svg viewBox="0 0 300 120" xmlns="http://www.w3.org/2000/svg"><defs><marker id="arr3" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#3ddc97"/></marker></defs><rect x="20" y="20" width="180" height="30" rx="4" fill="#1e2c3f" stroke="#27384f" stroke-width="1"/><text x="110" y="40" text-anchor="middle" fill="#8aa0b8" font-size="10">Bed / table</text><line x1="100" y1="50" x2="100" y2="50" stroke="#e7eef7" stroke-width="4"/><line x1="60" y1="35" x2="200" y2="35" stroke="#e7eef7" stroke-width="5" stroke-linecap="round"/><line x1="200" y1="35" x2="220" y2="80" stroke="#e7eef7" stroke-width="4" stroke-linecap="round"/><circle cx="220" cy="83" r="5" fill="#4ea3ff"/><line x1="220" y1="83" x2="220" y2="110" stroke="#3ddc97" stroke-width="2" marker-end="url(#arr3)"/><text x="232" y="100" fill="#3ddc97" font-size="10">Gravity</text><text x="210" y="30" fill="#4ea3ff" font-size="9">Knee at edge</text></svg>'
+  },
+  "quad-sets":{
+    title:"Quad Sets (VMO Bias)",category:"strength",phases:[1,2,3,4],
+    linkedIds:["p1.qset","p2.qset"],
+    overview:"Isometric quad contraction with VMO emphasis. The VMO (inner quad) is the first muscle to shut off after knee injury and the most important for patellar tracking. External hip rotation during the set biases VMO activation.",
+    steps:["Sit or lie with leg extended, small towel roll under knee","Rotate foot slightly outward (external hip rotation) for VMO bias","Push the back of knee DOWN into the towel — tighten quad as hard as possible","You should see the inner quad (VMO) pop near the kneecap","Hold 10 seconds, relax 5 seconds","3 sets of 10 reps"],
+    tips:["Place hand on VMO to feel it fire — biofeedback helps","Push hard — this is isometric, the knee doesn't move","The towel roll gives a target to push into","External rotation is key — turn foot out 15–20°"],
+    avoid:["Hyperextending by pressing heel down instead of knee","Holding your breath — exhale during contraction","Skipping these because they seem 'too easy' — VMO activation is critical"],
+    progression:"Start with 5s holds, progress to 10s. Add ankle weight for resistance in phase 2+. Progress to straight leg raises once you can hold 10s × 10.",
+    diagram:'<svg viewBox="0 0 300 130" xmlns="http://www.w3.org/2000/svg"><rect x="20" y="70" width="260" height="8" rx="3" fill="#27384f"/><line x1="40" y1="68" x2="240" y2="68" stroke="#e7eef7" stroke-width="5" stroke-linecap="round"/><ellipse cx="150" cy="66" rx="14" ry="6" fill="#1e2c3f" stroke="#4ea3ff" stroke-width="1.5"/><text x="150" y="69" text-anchor="middle" fill="#4ea3ff" font-size="8">towel</text><line x1="150" y1="58" x2="150" y2="38" stroke="#3ddc97" stroke-width="2.5" marker-end="url(#arr3)"/><text x="155" y="35" fill="#3ddc97" font-size="9">PUSH DOWN</text><circle cx="240" cy="66" r="5" fill="#4ea3ff"/><path d="M240,66 L255,62" stroke="#ffb454" stroke-width="2"/><text x="258" y="58" fill="#ffb454" font-size="8">Ext. rotate</text><ellipse cx="118" cy="53" rx="18" ry="10" fill="none" stroke="#3ddc97" stroke-width="1.5" stroke-dasharray="3,2"/><text x="118" y="56" text-anchor="middle" fill="#3ddc97" font-size="7">VMO</text></svg>'
+  },
+  "slr":{
+    title:"Straight Leg Raise",category:"strength",phases:[1,2,3,4],
+    linkedIds:["p1.slr","p2.slr"],
+    overview:"Foundational quad exercise that strengthens without bending the knee. If you see the knee bend during the lift (extensor lag), focus on quad sets until the lag resolves.",
+    steps:["Lie on back, uninvolved knee bent, foot flat","Lock the quad on the involved leg (do a quad set first!)","Keeping knee locked straight, lift leg to 45°","Hold 3–5 seconds at the top","Lower slowly over 3 seconds","3 sets of 10"],
+    tips:["Lock the knee BEFORE lifting — if it bends, that is extensor lag","If you have lag, add quad set first then immediately lift","Progress by adding ankle weight (1 lb increments)","Do in all 4 directions: forward, side, back, crossover"],
+    avoid:["Lifting with a bent knee — means quad is too weak, regress to quad sets","Arching the back — engage core","Swinging the leg — slow and controlled"],
+    progression:"Start with no weight. Add 1 lb ankle weight every 1–2 weeks. Target: 5 lb × 10 reps with no lag.",
+    diagram:'<svg viewBox="0 0 300 130" xmlns="http://www.w3.org/2000/svg"><line x1="30" y1="100" x2="270" y2="100" stroke="#27384f" stroke-width="2"/><line x1="50" y1="98" x2="170" y2="98" stroke="#e7eef7" stroke-width="4" stroke-linecap="round"/><line x1="170" y1="98" x2="260" y2="55" stroke="#e7eef7" stroke-width="4" stroke-linecap="round"/><circle cx="260" cy="55" r="5" fill="#4ea3ff"/><path d="M170,98 L170,70" stroke="#3ddc97" stroke-width="1" stroke-dasharray="3,2"/><text x="182" y="80" fill="#4ea3ff" font-size="9">~45°</text><text x="100" y="115" fill="#8aa0b8" font-size="10">Keep knee LOCKED</text></svg>'
+  },
+  "glute-bridge":{
+    title:"Glute Bridge",category:"strength",phases:[1,2,3,4],
+    linkedIds:["p2.gbridge"],
+    overview:"Strengthens glutes and hamstrings while training hip extension. Critical for restoring normal gait pattern and reducing quad dominance.",
+    steps:["Lie on back, knees bent ~60°, feet flat, hip-width apart","Push through heels to lift hips until body is straight from knees to shoulders","Squeeze glutes at the top — HARD","Hold 5 seconds","Lower slowly","3 sets of 10–12"],
+    tips:["Drive through HEELS not toes to maximize glute activation","Squeeze a fist-sized ball between knees for adductor co-activation","Don't hyperextend the back — neutral spine at top","Feel glutes, not hamstrings — if hammies cramp, move feet closer"],
+    avoid:["Hyperextending the low back","Pushing through the toes (shifts load to quads)","Rushing — hold the top position"],
+    progression:"Double leg → single leg (phase 3+). Add a band above knees for extra glute med work. Add weight plate on hips for phase 4.",
+    diagram:'<svg viewBox="0 0 300 120" xmlns="http://www.w3.org/2000/svg"><line x1="20" y1="100" x2="280" y2="100" stroke="#27384f" stroke-width="2"/><line x1="50" y1="98" x2="100" y2="98" stroke="#e7eef7" stroke-width="4" stroke-linecap="round"/><line x1="100" y1="98" x2="160" y2="55" stroke="#e7eef7" stroke-width="4" stroke-linecap="round"/><line x1="160" y1="55" x2="200" y2="55" stroke="#e7eef7" stroke-width="4" stroke-linecap="round"/><line x1="200" y1="55" x2="230" y2="98" stroke="#e7eef7" stroke-width="4" stroke-linecap="round"/><line x1="230" y1="98" x2="240" y2="98" stroke="#e7eef7" stroke-width="4" stroke-linecap="round"/><line x1="160" y1="55" x2="160" y2="30" stroke="#3ddc97" stroke-width="2" marker-end="url(#arr3)"/><text x="170" y="28" fill="#3ddc97" font-size="9">Lift hips</text><text x="100" y="115" fill="#8aa0b8" font-size="10">Drive through heels</text></svg>'
+  },
+  "dead-bug":{
+    title:"Dead Bug",category:"core",phases:[1,2,3,4],
+    linkedIds:["p1.dbug","p2.dbug"],
+    overview:"Gold-standard core exercise that trains anterior core stability without loading the spine. Teaches the core to resist extension — critical for protecting the knee during dynamic movements.",
+    steps:["Lie on back, arms pointing to ceiling, knees bent 90° (tabletop)","Press low back FLAT into the floor — maintain this throughout","Slowly extend RIGHT arm overhead while extending LEFT leg","Return to start, then opposite side","Exhale as limbs extend, inhale on return","3 sets of 8 per side"],
+    tips:["The key is keeping the low back FLAT — if it arches, you've gone too far","Start with arms-only or legs-only if full version is too hard","Go SLOW — 3 seconds out, 3 seconds back","Place a hand under your low back to feel for the gap"],
+    avoid:["Letting the low back arch off the floor","Holding your breath","Moving too fast — speed is the enemy"],
+    progression:"Arms only → legs only → opposite arm+leg → add light dumbbell → add ankle weight.",
+    diagram:'<svg viewBox="0 0 300 140" xmlns="http://www.w3.org/2000/svg"><line x1="30" y1="110" x2="270" y2="110" stroke="#27384f" stroke-width="2"/><line x1="70" y1="108" x2="220" y2="108" stroke="#e7eef7" stroke-width="4" stroke-linecap="round"/><line x1="220" y1="108" x2="220" y2="80" stroke="#e7eef7" stroke-width="3" stroke-linecap="round"/><line x1="220" y1="80" x2="250" y2="40" stroke="#4ea3ff" stroke-width="3" stroke-linecap="round" stroke-dasharray="5,3"/><line x1="70" y1="108" x2="70" y2="80" stroke="#e7eef7" stroke-width="3" stroke-linecap="round"/><line x1="70" y1="80" x2="40" y2="50" stroke="#4ea3ff" stroke-width="3" stroke-linecap="round" stroke-dasharray="5,3"/><text x="255" y="35" fill="#4ea3ff" font-size="9">Extend leg</text><text x="10" y="45" fill="#4ea3ff" font-size="9">Extend arm</text><text x="110" y="100" fill="#3ddc97" font-size="9">LOW BACK FLAT</text></svg>'
+  },
+  "side-plank":{
+    title:"Side Plank",category:"core",phases:[2,3,4],
+    linkedIds:["p2.splank"],
+    overview:"Lateral core stabilizer that trains the obliques and gluteus medius. Essential for single-leg stability and preventing knee valgus during walking and stairs.",
+    steps:["Lie on side, elbow under shoulder","Bend both knees 90° for the modified version","Lift hips off ground, body in straight line from knees to shoulders","Hold 15–30 seconds","Lower with control","3 sets per side"],
+    tips:["Stack hips — don't let top hip roll forward","Push the floor away with your elbow","Breathe normally — don't hold breath","Modified (from knees) is perfectly fine for phase 2"],
+    avoid:["Letting hips sag or pike","Holding breath","Twisting the torso"],
+    progression:"Knees bent → straight legs → add top leg lift → add hip dips.",
+    diagram:'<svg viewBox="0 0 300 120" xmlns="http://www.w3.org/2000/svg"><line x1="20" y1="100" x2="280" y2="100" stroke="#27384f" stroke-width="2"/><circle cx="80" cy="45" r="10" fill="#1e2c3f" stroke="#e7eef7" stroke-width="2"/><line x1="80" y1="55" x2="80" y2="98" stroke="#e7eef7" stroke-width="3" stroke-linecap="round"/><line x1="80" y1="98" x2="220" y2="65" stroke="#e7eef7" stroke-width="4" stroke-linecap="round"/><line x1="220" y1="65" x2="250" y2="98" stroke="#e7eef7" stroke-width="3" stroke-linecap="round"/><text x="150" y="55" fill="#3ddc97" font-size="10">Straight line</text><text x="70" y="112" fill="#8aa0b8" font-size="9">Elbow under shoulder</text></svg>'
+  },
+  "sit-to-stand":{
+    title:"Sit-to-Stand",category:"strength",phases:[2,3,4],
+    linkedIds:["p2.sitstand"],
+    overview:"Functional exercise that mimics the #1 daily movement pattern. Trains eccentric quad control (lowering) and concentric power (rising). Directly transfers to chair, toilet, and car transfers.",
+    steps:["Sit on firm chair, feet flat, hip-width apart","Lean forward — nose over toes — shift weight to feet","Push through heels to stand","Slowly lower back down over 3–4 seconds (this is the hard part)","Don't plop down — control the descent","3 sets of 8–10"],
+    tips:["Use armrests initially if needed, then wean off","Higher seat = easier; lower seat = harder","The eccentric (lowering) phase is more important than standing up","Keep knees tracking over 2nd toe, not caving in"],
+    avoid:["Using momentum to stand (rocking)","Letting knees cave inward","Plopping down on descent — control it!"],
+    progression:"High chair with arms → standard chair no arms → slow 5-second lower → add weight vest.",
+    diagram:'<svg viewBox="0 0 300 140" xmlns="http://www.w3.org/2000/svg"><rect x="20" y="80" width="60" height="50" rx="4" fill="#1e2c3f" stroke="#27384f"/><text x="50" y="110" text-anchor="middle" fill="#8aa0b8" font-size="9">Chair</text><line x1="50" y1="78" x2="50" y2="45" stroke="#e7eef7" stroke-width="4" stroke-linecap="round"/><circle cx="50" cy="38" r="8" fill="#1e2c3f" stroke="#e7eef7" stroke-width="2"/><line x1="50" y1="78" x2="70" y2="128" stroke="#e7eef7" stroke-width="3" stroke-linecap="round"/><path d="M90,80 Q130,20 170,80" stroke="#4ea3ff" stroke-width="2" fill="none" stroke-dasharray="5,3"/><line x1="200" y1="30" x2="200" y2="130" stroke="#e7eef7" stroke-width="4" stroke-linecap="round"/><circle cx="200" cy="22" r="8" fill="#1e2c3f" stroke="#e7eef7" stroke-width="2"/><line x1="200" y1="130" x2="185" y2="130" stroke="#e7eef7" stroke-width="3" stroke-linecap="round"/><text x="130" y="50" fill="#4ea3ff" font-size="10">Motion path</text></svg>'
+  },
+  "llld-stretch":{
+    title:"LLLD Stretch (Low-Load Long-Duration)",category:"stretch",phases:[1,2,3,4],
+    linkedIds:["p2.llld"],
+    overview:"The secret weapon for breaking through flexion plateaus. 10+ minutes of sustained low-load stretch physically remodels collagen and scar tissue. This is how you get past 90°.",
+    steps:["Sit on floor or bed with affected leg straight ahead","Loop a belt or strap around the ankle","Bend the knee to your current max, then use the strap to pull 3–5° further","This should feel like a firm stretch (5–6/10) but NOT sharp pain","Hold for 10 FULL minutes — set a timer","Keep the quad relaxed — breathe into the stretch"],
+    tips:["This is a 10-minute sustained hold, NOT reps — patience is key","5–6/10 stretch intensity, not 8/10","Do immediately after patellar mobs and heel slides for max effect","Ice after if you get any swelling response","Listening to a podcast/show helps pass the 10 minutes"],
+    avoid:["Going too aggressive — if pain > 6/10, back off","Tensing the quad to fight the stretch","Stopping early — the tissue changes happen in minutes 7–10"],
+    progression:"Start at whatever angle you can hold for 10 min. Add 2–3° per session as tolerated. Goal: reach 120°+ sustained hold.",
+    diagram:'<svg viewBox="0 0 300 120" xmlns="http://www.w3.org/2000/svg"><line x1="30" y1="100" x2="280" y2="100" stroke="#27384f" stroke-width="2"/><line x1="50" y1="98" x2="140" y2="98" stroke="#e7eef7" stroke-width="4" stroke-linecap="round"/><line x1="140" y1="98" x2="200" y2="50" stroke="#e7eef7" stroke-width="4" stroke-linecap="round"/><circle cx="200" cy="47" r="5" fill="#4ea3ff"/><path d="M200,47 C215,45 215,50 200,52" stroke="#ffb454" stroke-width="2" fill="none"/><line x1="200" y1="50" x2="160" y2="40" stroke="#3ddc97" stroke-width="2" stroke-dasharray="4,3"/><text x="130" y="35" fill="#3ddc97" font-size="9">Strap pull</text><text x="100" y="75" fill="#ffb454" font-size="10">Hold 10 min!</text><rect x="230" y="70" width="50" height="25" rx="4" fill="#1e2c3f" stroke="#ffb454" stroke-width="1"/><text x="255" y="86" text-anchor="middle" fill="#ffb454" font-size="9">10:00</text></svg>'
+  },
+  "bike":{
+    title:"Stationary Bike",category:"cardio",phases:[1,2,3,4],
+    linkedIds:["p1.bike","p2.bike","p3.bike","p4.bike"],
+    overview:"Cycling provides low-impact ROM work and cardiovascular conditioning. The circular pedal motion helps maintain flexion gains while building endurance. Seat height is critical.",
+    steps:["Set seat HIGH initially — you only need partial flexion to pedal","Pedal forward. If you can't make full circles, rock back and forth (pendulums)","As ROM improves, lower the seat gradually","Maintain a comfortable pace — this is not a sprint","5–15 minutes depending on phase","Light resistance only until you can do full circles comfortably"],
+    tips:["Start with seat high enough that you can complete full revolutions","If you can't complete a circle, rock forward/back until you can","Lower seat 1 cm per session to progressively increase flexion demand","Keep cadence moderate (60–70 RPM)","This doubles as warm-up before other exercises"],
+    avoid:["Setting seat too low before you have the ROM","Heavy resistance in early phases","Pushing through sharp knee pain while pedaling"],
+    progression:"Pendulums → full circles high seat → lower seat weekly → add light resistance → increase time to 15–20 min.",
+    diagram:'<svg viewBox="0 0 300 140" xmlns="http://www.w3.org/2000/svg"><circle cx="150" cy="90" r="40" fill="none" stroke="#27384f" stroke-width="2"/><circle cx="150" cy="90" r="3" fill="#4ea3ff"/><circle cx="150" cy="50" r="5" fill="#4ea3ff"/><line x1="150" y1="90" x2="150" y2="50" stroke="#e7eef7" stroke-width="2"/><circle cx="150" cy="130" r="5" fill="#4ea3ff"/><line x1="150" y1="90" x2="150" y2="130" stroke="#e7eef7" stroke-width="2"/><text x="150" y="20" text-anchor="middle" fill="#8aa0b8" font-size="10">Pedal circle</text><line x1="110" y1="40" x2="60" y2="20" stroke="#e7eef7" stroke-width="3" stroke-linecap="round"/><text x="50" y="15" fill="#3ddc97" font-size="9">Seat height: HIGH first</text><path d="M200,50 A50,50 0 0,1 200,130" stroke="#4ea3ff" stroke-width="2" fill="none" stroke-dasharray="5,3"/><text x="215" y="95" fill="#4ea3ff" font-size="9">ROM arc</text></svg>'
+  },
+  "tke":{
+    title:"Terminal Knee Extension (TKE)",category:"strength",phases:[2,3,4],
+    linkedIds:["p2.tke"],
+    overview:"Targets the last 30° of extension with resistance band. This is where the VMO works hardest and where most patients have residual weakness. Essential for eliminating extensor lag.",
+    steps:["Loop resistance band around a sturdy anchor at knee height","Step into band so it sits behind the affected knee","Stand facing the anchor, knee slightly bent (about 30°)","Straighten the knee against the band resistance","Squeeze the quad hard at full extension — hold 3 seconds","Slowly return to 30° bend","3 sets of 12"],
+    tips:["Focus on the SQUEEZE at full lockout","Use the uninvolved leg for balance if needed","This is the single best exercise for extensor lag","Light band at first — the last 10° should be hard but doable"],
+    avoid:["Hyperextending the knee (pushing past straight)","Using such a heavy band that you can't fully straighten","Bending more than 30° — this is TERMINAL extension, not a squat"],
+    progression:"Light band → medium → heavy. Add a 2-second hold at lockout. Progress to single-leg stance during TKE.",
+    diagram:'<svg viewBox="0 0 300 140" xmlns="http://www.w3.org/2000/svg"><rect x="10" y="20" width="15" height="100" rx="3" fill="#27384f" stroke="#8aa0b8" stroke-width="1"/><text x="17" y="135" text-anchor="middle" fill="#8aa0b8" font-size="8">Anchor</text><line x1="25" y1="70" x2="140" y2="70" stroke="#ffb454" stroke-width="3" stroke-dasharray="8,4"/><text x="80" y="62" fill="#ffb454" font-size="9">Band</text><line x1="140" y1="30" x2="140" y2="70" stroke="#e7eef7" stroke-width="4" stroke-linecap="round"/><line x1="140" y1="70" x2="155" y2="120" stroke="#e7eef7" stroke-width="4" stroke-linecap="round"/><circle cx="140" cy="25" r="8" fill="#1e2c3f" stroke="#e7eef7" stroke-width="2"/><path d="M155,120 L155,70" stroke="#4ea3ff" stroke-width="2" stroke-dasharray="4,3"/><line x1="165" y1="70" x2="165" y2="100" stroke="#3ddc97" stroke-width="2"/><text x="175" y="88" fill="#3ddc97" font-size="9">Straighten!</text></svg>'
+  },
+  "mini-squat":{
+    title:"Mini Squat (Wall Slide)",category:"strength",phases:[2,3,4],
+    linkedIds:["p3.msquat"],
+    overview:"Controlled partial squat with wall support. Builds eccentric quad strength through a safe range. The wall removes balance demands so you can focus on quad loading.",
+    steps:["Stand with back against wall, feet 12 inches from wall, hip-width","Place a ball or pillow between knees to maintain alignment","Slide down the wall to 30–45° knee bend (NO deeper initially)","Hold 5 seconds at the bottom","Slide back up slowly","3 sets of 10"],
+    tips:["Keep weight in heels, not toes","Knees should track over 2nd toe","30° is plenty in phase 2 — depth is earned","The ball between knees prevents valgus collapse"],
+    avoid:["Going deeper than 60° until phase 3–4","Letting knees cave inward","Rising up on toes"],
+    progression:"30° depth → 45° → 60° → free-standing bodyweight squat (no wall) → goblet squat with weight.",
+    diagram:'<svg viewBox="0 0 300 150" xmlns="http://www.w3.org/2000/svg"><rect x="200" y="10" width="15" height="140" rx="2" fill="#27384f"/><text x="240" y="80" fill="#8aa0b8" font-size="9">Wall</text><line x1="195" y1="30" x2="195" y2="80" stroke="#e7eef7" stroke-width="4" stroke-linecap="round"/><circle cx="195" cy="24" r="8" fill="#1e2c3f" stroke="#e7eef7" stroke-width="2"/><line x1="195" y1="80" x2="175" y2="130" stroke="#e7eef7" stroke-width="4" stroke-linecap="round"/><line x1="175" y1="130" x2="175" y2="140" stroke="#e7eef7" stroke-width="3"/><path d="M195,80 Q180,80 175,90" stroke="#4ea3ff" stroke-width="1" fill="none"/><text x="155" y="88" fill="#4ea3ff" font-size="9">30-45°</text><line x1="195" y1="80" x2="195" y2="120" stroke="#3ddc97" stroke-width="1.5" stroke-dasharray="3,3"/><text x="130" y="108" fill="#3ddc97" font-size="9">Slide range</text></svg>'
+  },
+  "step-ups":{
+    title:"Step-Ups",category:"strength",phases:[3,4],
+    linkedIds:["p3.stepup","p4.stepup"],
+    overview:"Unilateral leg strengthening that directly transfers to stair climbing. Start with a low step and progress height as strength improves.",
+    steps:["Stand facing a 4–6 inch step (a thick book or low stair)","Place involved foot fully on the step","Push through the heel to step up, bringing other foot to the step","Step back down with the uninvolved leg (involved leg controls descent)","3 sets of 8–10 per leg"],
+    tips:["Push through the HEEL of the top foot","Keep trunk upright — don't lean forward excessively","Control the lowering phase — don't just drop down","Start with a very low step — 4 inches is fine"],
+    avoid:["Pushing off the bottom foot — the top leg should do the work","Using a step that's too high before you're ready","Letting the knee cave inward on the step-up"],
+    progression:"4 inch → 6 inch → 8 inch → standard stair height. Add dumbbells for load. Progress to lateral step-ups.",
+    diagram:'<svg viewBox="0 0 300 140" xmlns="http://www.w3.org/2000/svg"><rect x="120" y="100" width="80" height="30" rx="4" fill="#1e2c3f" stroke="#4ea3ff" stroke-width="2"/><text x="160" y="120" text-anchor="middle" fill="#4ea3ff" font-size="9">Step</text><line x1="160" y1="98" x2="160" y2="55" stroke="#e7eef7" stroke-width="4" stroke-linecap="round"/><circle cx="160" cy="48" r="8" fill="#1e2c3f" stroke="#e7eef7" stroke-width="2"/><line x1="160" y1="98" x2="145" y2="100" stroke="#e7eef7" stroke-width="3"/><line x1="80" y1="128" x2="80" y2="85" stroke="#e7eef7" stroke-width="4" stroke-linecap="round" stroke-dasharray="6,3"/><circle cx="80" cy="78" r="8" fill="none" stroke="#e7eef7" stroke-width="2" stroke-dasharray="4,3"/><path d="M80,85 Q110,70 145,98" stroke="#3ddc97" stroke-width="2" fill="none" stroke-dasharray="5,3"/><text x="100" y="70" fill="#3ddc97" font-size="9">Step up</text></svg>'
+  },
+  "clamshells":{
+    title:"Clamshells",category:"strength",phases:[1,2,3,4],
+    linkedIds:["p2.clam","p3.clam"],
+    overview:"Glute medius strengthener. Weak glute med causes knee valgus (caving in) during walking and stairs. This is a foundational hip stability exercise.",
+    steps:["Lie on side, knees bent 45°, heels touching","Keep heels together, open top knee like a clamshell","Open as far as possible without rolling the pelvis back","Hold 2 seconds at the top","Slowly lower","3 sets of 15 per side, band above knees"],
+    tips:["Don't let the pelvis roll backward — the motion is pure hip rotation","Place your hand on the top glute to feel it contract","If too easy without a band, you're probably rolling the pelvis","Keep heels pressed together throughout"],
+    avoid:["Rolling the pelvis backward to fake more range","Using a band that's too heavy (form breaks down)","Rushing through reps"],
+    progression:"No band → light band → medium band → heavy band. Progress to side-lying hip abduction (straight leg).",
+    diagram:'<svg viewBox="0 0 300 120" xmlns="http://www.w3.org/2000/svg"><line x1="30" y1="100" x2="270" y2="100" stroke="#27384f" stroke-width="2"/><line x1="50" y1="98" x2="140" y2="98" stroke="#e7eef7" stroke-width="4" stroke-linecap="round"/><line x1="140" y1="98" x2="180" y2="98" stroke="#e7eef7" stroke-width="3" stroke-linecap="round"/><line x1="140" y1="96" x2="180" y2="55" stroke="#4ea3ff" stroke-width="3" stroke-linecap="round" stroke-dasharray="5,3"/><circle cx="180" cy="98" r="4" fill="#e7eef7"/><circle cx="180" cy="55" r="4" fill="#4ea3ff"/><path d="M145,98 Q160,80 170,60" stroke="#3ddc97" stroke-width="2" fill="none"/><text x="195" y="55" fill="#4ea3ff" font-size="9">OPEN</text><text x="195" y="100" fill="#8aa0b8" font-size="9">Heels together</text></svg>'
+  },
+  "ham-calf-stretch":{
+    title:"Hamstring & Calf Stretch",category:"stretch",phases:[1,2,3,4],
+    linkedIds:["p1.hamcalf"],
+    overview:"Tight hamstrings and calves pull on the knee joint and limit both flexion and extension. Regular stretching maintains soft tissue length and reduces compensatory gait patterns.",
+    steps:["HAMSTRING: Sit on floor, one leg extended. Reach toward toes, hinge at hips, hold 30 seconds","CALF: Stand facing wall, step back with one foot, press heel down, lean into wall, hold 30 seconds","Do BOTH on both sides","2 sets each stretch"],
+    tips:["Hinge at the hips, don't round the upper back","You should feel the stretch in the MUSCLE, not behind the knee joint","Breathe into the stretch — don't hold your breath","After a hot shower = best time for stretching"],
+    avoid:["Bouncing (ballistic stretching)","Rounding the spine excessively","Stretching to the point of pain — firm stretch only"],
+    progression:"Static holds → add nerve floss (flex/extend ankle during hamstring stretch) → add elevated surface for deeper calf stretch.",
+    diagram:'<svg viewBox="0 0 300 120" xmlns="http://www.w3.org/2000/svg"><text x="10" y="15" fill="#4ea3ff" font-size="11" font-weight="bold">Hamstring:</text><line x1="40" y1="70" x2="150" y2="70" stroke="#e7eef7" stroke-width="4" stroke-linecap="round"/><line x1="40" y1="68" x2="30" y2="40" stroke="#e7eef7" stroke-width="3" stroke-linecap="round"/><circle cx="30" cy="35" r="6" fill="#1e2c3f" stroke="#e7eef7" stroke-width="2"/><line x1="30" y1="38" x2="70" y2="58" stroke="#3ddc97" stroke-width="2" stroke-dasharray="4,3"/><text x="75" y="52" fill="#3ddc97" font-size="9">Reach</text><text x="170" y="15" fill="#4ea3ff" font-size="11" font-weight="bold">Calf:</text><rect x="260" y="20" width="10" height="80" rx="2" fill="#27384f"/><text x="265" y="115" text-anchor="middle" fill="#8aa0b8" font-size="8">Wall</text><line x1="250" y1="40" x2="250" y2="100" stroke="#e7eef7" stroke-width="4" stroke-linecap="round"/><circle cx="250" cy="35" r="6" fill="#1e2c3f" stroke="#e7eef7" stroke-width="2"/><line x1="250" y1="100" x2="210" y2="100" stroke="#e7eef7" stroke-width="3" stroke-linecap="round"/><text x="215" y="95" fill="#3ddc97" font-size="8">Heel down</text></svg>'
+  },
+  "moist-heat":{
+    title:"Moist Heat Application",category:"mobility",phases:[1,2,3,4],
+    linkedIds:["p1.heat"],
+    overview:"Moist heat before exercise increases tissue extensibility by 20–25%. Always apply heat BEFORE mobility work and NEVER after (use ice after).",
+    steps:["Wet a towel and microwave for 60–90 seconds","Wrap around entire knee — front, sides, and back of knee","Cover with a dry towel to retain heat","Apply for 10–15 minutes","Go IMMEDIATELY into patellar mobs and heel slides"],
+    tips:["Moist heat penetrates deeper than dry heat","Test temperature on inner forearm first — should be warm, not burning","Keep the knee slightly bent (supported) during heat application","Transition to exercises within 2 minutes of removing heat for max benefit"],
+    avoid:["Applying heat AFTER exercise (use ice after)","Using heat on actively swollen/hot joints","Falling asleep with heat on — set a timer"],
+    progression:"Same protocol throughout all phases. Heat is a pre-exercise tool, not a standalone treatment.",
+    diagram:'<svg viewBox="0 0 300 100" xmlns="http://www.w3.org/2000/svg"><ellipse cx="150" cy="50" rx="50" ry="35" fill="#1e2c3f" stroke="#ffb454" stroke-width="2" stroke-dasharray="5,3"/><text x="150" y="53" text-anchor="middle" fill="#e7eef7" font-size="11">Knee</text><path d="M110,30 Q100,15 115,10" stroke="#ff6b6b" stroke-width="2" fill="none"/><path d="M130,25 Q120,10 135,5" stroke="#ff6b6b" stroke-width="2" fill="none"/><path d="M150,22 Q140,7 155,2" stroke="#ff6b6b" stroke-width="2" fill="none"/><path d="M170,25 Q160,10 175,5" stroke="#ff6b6b" stroke-width="2" fill="none"/><path d="M190,30 Q180,15 195,10" stroke="#ff6b6b" stroke-width="2" fill="none"/><text x="150" y="95" text-anchor="middle" fill="#ffb454" font-size="10">10-15 min moist heat → then exercise</text></svg>'
+  },
+  "ice-elevation":{
+    title:"Ice & Elevation",category:"mobility",phases:[1,2,3,4],
+    linkedIds:["p1.ice","p2.ice"],
+    overview:"Post-exercise icing controls inflammation and swelling. Elevation assists venous return. Always ice AFTER exercise, never before (heat before).",
+    steps:["Wrap ice pack in thin towel (never directly on skin)","Apply to the entire knee — wrap around","Elevate leg above heart level (pillows under calf, NOT under knee)","Keep in place for 15–20 minutes","Remove and let skin return to normal temperature before re-icing"],
+    tips:["Pillow under CALF, not under knee — keeps extension, prevents contracture","Frozen peas or crushed ice conforms better than hard ice packs","Do after EVERY exercise session","Compression wrap over ice pack enhances effect"],
+    avoid:["Icing before exercise (reduces muscle activation)","Placing pillow under the knee (promotes flexion contracture)","Leaving ice on more than 20 minutes","Direct ice on skin without a barrier"],
+    progression:"Same protocol all phases. Reduce frequency as swelling decreases (you may eventually only need ice after hard sessions).",
+    diagram:'<svg viewBox="0 0 300 100" xmlns="http://www.w3.org/2000/svg"><line x1="30" y1="80" x2="270" y2="80" stroke="#27384f" stroke-width="2"/><line x1="180" y1="60" x2="270" y2="60" stroke="#27384f" stroke-width="8" stroke-linecap="round"/><text x="225" y="55" fill="#8aa0b8" font-size="8">Pillows</text><line x1="60" y1="55" x2="260" y2="55" stroke="#e7eef7" stroke-width="4" stroke-linecap="round"/><rect x="110" y="40" width="50" height="15" rx="4" fill="#4ea3ff" opacity="0.4" stroke="#4ea3ff" stroke-width="1"/><text x="135" y="51" text-anchor="middle" fill="#4ea3ff" font-size="8">ICE</text><text x="60" y="75" fill="#3ddc97" font-size="8">Foot end UP</text><text x="220" y="75" fill="#ffb454" font-size="8">Under CALF</text></svg>'
+  },
+  "lateral-walks":{
+    title:"Lateral Band Walks",category:"strength",phases:[3,4],
+    linkedIds:["p3.latwalk"],
+    overview:"Strengthens the hip abductors (glute med) in a functional standing position. Critical for single-leg stability during gait and stair climbing.",
+    steps:["Place mini-band just above ankles","Stand in quarter squat position, feet hip-width","Step sideways with one foot, then follow with the other","Maintain tension in the band throughout — don't let feet come together","10 steps right, 10 steps left = 1 set","3 sets"],
+    tips:["Stay in a slight squat the entire time — don't stand straight","Keep toes pointing forward, not outward","Push the knee OUT over the pinky toe","Wider steps = harder"],
+    avoid:["Dragging the trailing foot (maintain band tension)","Standing straight up between steps","Letting knees cave inward"],
+    progression:"Light band → medium → heavy. Add deeper squat position. Add forward/backward monster walks.",
+    diagram:'<svg viewBox="0 0 300 120" xmlns="http://www.w3.org/2000/svg"><line x1="20" y1="110" x2="280" y2="110" stroke="#27384f" stroke-width="2"/><line x1="120" y1="108" x2="120" y2="50" stroke="#e7eef7" stroke-width="4" stroke-linecap="round"/><circle cx="120" cy="43" r="8" fill="#1e2c3f" stroke="#e7eef7" stroke-width="2"/><line x1="180" y1="108" x2="180" y2="50" stroke="#e7eef7" stroke-width="4" stroke-linecap="round"/><circle cx="180" cy="43" r="8" fill="#1e2c3f" stroke="#e7eef7" stroke-width="2"/><line x1="123" y1="100" x2="177" y2="100" stroke="#ffb454" stroke-width="3" stroke-dasharray="6,3"/><text x="150" y="95" text-anchor="middle" fill="#ffb454" font-size="9">Band</text><line x1="180" y1="108" x2="230" y2="108" stroke="#3ddc97" stroke-width="2" marker-end="url(#arr3)"/><text x="235" y="105" fill="#3ddc97" font-size="9">Step</text></svg>'
+  },
+  "pallof-press":{
+    title:"Pallof Press",category:"core",phases:[3,4],
+    linkedIds:["p3.pallof"],
+    overview:"Anti-rotation core exercise. The band tries to rotate your torso while you resist. Trains the deep core stabilizers that protect the knee during twisting movements.",
+    steps:["Attach band to anchor at chest height","Stand sideways to anchor, feet shoulder-width, hold band at chest","Press band straight out in front of chest with both hands","Hold for 5 seconds — resist the rotation","Return to chest","3 sets of 10 per side"],
+    tips:["The exercise is about RESISTING rotation, not creating it","Brace your abs like someone is going to poke your belly","Keep hips square — don't let them twist","Exhale as you press out"],
+    avoid:["Rotating toward the anchor","Leaning away to compensate","Using too heavy a band — form is everything"],
+    progression:"Half-kneeling Pallof → standing → add overhead press → add perturbations.",
+    diagram:'<svg viewBox="0 0 300 130" xmlns="http://www.w3.org/2000/svg"><rect x="10" y="20" width="12" height="90" rx="3" fill="#27384f" stroke="#8aa0b8" stroke-width="1"/><text x="16" y="125" text-anchor="middle" fill="#8aa0b8" font-size="8">Anchor</text><line x1="22" y1="65" x2="130" y2="65" stroke="#ffb454" stroke-width="3" stroke-dasharray="6,3"/><text x="75" y="57" fill="#ffb454" font-size="9">Band</text><line x1="130" y1="30" x2="130" y2="110" stroke="#e7eef7" stroke-width="4" stroke-linecap="round"/><circle cx="130" cy="24" r="8" fill="#1e2c3f" stroke="#e7eef7" stroke-width="2"/><line x1="130" y1="65" x2="200" y2="65" stroke="#3ddc97" stroke-width="3" marker-end="url(#arr3)"/><text x="210" y="62" fill="#3ddc97" font-size="9">PRESS</text><text x="130" y="130" text-anchor="middle" fill="#4ea3ff" font-size="9">Resist rotation!</text></svg>'
+  }
+};
+
+/* Build exercise ID → guide key map */
+const EXERCISE_GUIDE_MAP = {};
+Object.entries(GUIDE).forEach(([key, g]) => {
+  (g.linkedIds || []).forEach(id => { EXERCISE_GUIDE_MAP[id] = key; });
+});
+
+
+/* ── PHASES data ── */
+const PHASES = {
+  1:{name:"Phase 1 — Mobility & Activation",focus:"ROM recovery, quad activation, swelling control",
+    flexionTarget:105,gaitTarget:"2 crutches → 1 crutch",
+    goals:["Flexion to 105°","Full extension (0°)","Quad set hold 10s without lag","Patellar mobility restored","Swelling ≤ 1/3"],
+    gates:[
+      {label:"Flexion ≥ 100°",test:l=>l.flex>=100},
+      {label:"Extensor lag ≤ 5°",test:l=>l.lag<=5},
+      {label:"Pain at rest ≤ 3",test:l=>l.painRest<=3},
+      {label:"Swelling ≤ 1",test:l=>l.swell<=1}
+    ],
+    sessions:[
+      {name:"AM Mobility",time:"Morning · 25 min",exercises:[
+        {id:"p1.heat",name:"Moist heat pack",dose:"10 min",how:"Wet towel wrap around knee, microwave 60–90s. Apply immediately before mob work."},
+        {id:"p1.pmob",name:"Patellar mobilizations",dose:"3 min all directions",how:"Glide kneecap N/S/E/W. Extra time on inferior (down) — this breaks the 90° plateau."},
+        {id:"p1.hslide",name:"Heel slides",dose:"3×15",how:"Towel under heel on smooth surface. Pull gently with strap at end range, hold 5s."},
+        {id:"p1.proneh",name:"Prone hang",dose:"2×2 min",how:"Lie face-down, knees at bed edge, let gravity extend. Fully relax quads."},
+        {id:"p1.qset",name:"Quad sets (VMO bias)",dose:"3×10, 10s hold",how:"Towel roll under knee. Externally rotate foot 15°, push knee into towel."},
+        {id:"p1.slr",name:"Straight leg raise",dose:"3×10",how:"Lock quad first, lift to 45°, hold 3s. If knee bends = lag, do more quad sets."}
+      ]},
+      {name:"PM Strength & Core",time:"Afternoon · 35 min",exercises:[
+        {id:"p1.dbug",name:"Dead bug",dose:"3×8/side",how:"Low back FLAT on floor. Extend opposite arm+leg slowly. 3s out, 3s back."},
+        {id:"p1.bike",name:"Stationary bike",dose:"5–8 min",how:"Seat HIGH. Pendulums okay if can't complete circles. No resistance."},
+        {id:"p1.hamcalf",name:"Hamstring & calf stretch",dose:"2×30s each",how:"Seated hamstring reach + wall calf stretch. Firm stretch, no bouncing."}
+      ]},
+      {name:"Evening Recovery",time:"Evening · 30 min",exercises:[
+        {id:"p1.hslide2",name:"Heel slides (repeat)",dose:"2×15",how:"Second session locks in ROM gains from today."},
+        {id:"p1.ice",name:"Ice & elevation",dose:"15–20 min",how:"Ice wrapped in towel. Elevate: pillow under CALF not knee. Above heart level."}
+      ]}
+    ]
+  },
+  2:{name:"Phase 2 — Strength Foundation",focus:"Functional strength, single-leg prep, LLLD stretching",
+    flexionTarget:120,gaitTarget:"1 crutch → no aids",
+    goals:["Flexion to 120°","SLR no lag with 2 lb","Sit-to-stand from standard chair","Single-leg stance 15 sec","Walk without crutch indoors"],
+    gates:[
+      {label:"Flexion ≥ 115°",test:l=>l.flex>=115},
+      {label:"Extensor lag = 0°",test:l=>l.lag===0},
+      {label:"Pain with activity ≤ 3",test:l=>l.painAct<=3},
+      {label:"Single-leg stance ≥ 10s",test:l=>l.sls>=10}
+    ],
+    sessions:[
+      {name:"AM Mobility",time:"Morning · 25 min",exercises:[
+        {id:"p2.pmob",name:"Patellar mobilizations",dose:"3 min",how:"Continue inferior bias. Tissue should be loosening — push further."},
+        {id:"p2.hslide",name:"Heel slides + overpressure",dose:"3×15",how:"Add 3–5° past comfort with towel pull. Hold end range 10s."},
+        {id:"p2.llld",name:"LLLD stretch",dose:"10 min sustained",how:"Belt around ankle, hold 3–5° past max. 5–6/10 stretch. Full 10 min!"},
+        {id:"p2.qset",name:"Quad sets",dose:"3×10",how:"Maintain VMO activation daily. Add 1 lb ankle weight."}
+      ]},
+      {name:"PM Strength & Core",time:"Afternoon · 35 min",exercises:[
+        {id:"p2.slr",name:"SLR (4 directions)",dose:"3×10 each",how:"Forward, side, back, crossover. Add 1–2 lb ankle weight."},
+        {id:"p2.gbridge",name:"Glute bridge",dose:"3×12",how:"Drive through heels. Squeeze glutes at top 5s. Ball between knees."},
+        {id:"p2.sitstand",name:"Sit-to-stand",dose:"3×8",how:"Standard chair, no arms. 4-second lower. Nose over toes."},
+        {id:"p2.tke",name:"Terminal knee extension",dose:"3×12",how:"Band behind knee. Focus on full lockout squeeze 3s."},
+        {id:"p2.dbug",name:"Dead bug",dose:"3×8/side",how:"Opposite arm+leg. Keep low back FLAT."},
+        {id:"p2.splank",name:"Side plank (modified)",dose:"3×15s/side",how:"From knees. Elbow under shoulder. Straight line."},
+        {id:"p2.clam",name:"Clamshells",dose:"3×15/side",how:"Band above knees. Heels together, open top knee. Don't roll pelvis."}
+      ]},
+      {name:"Evening Recovery",time:"Evening · 30 min",exercises:[
+        {id:"p2.bike",name:"Stationary bike",dose:"10 min",how:"Lower seat 1 cm from last week. Light resistance okay."},
+        {id:"p2.ice",name:"Ice & elevation",dose:"15 min",how:"Post-exercise. Pillow under calf. Compress wrap over ice."}
+      ]}
+    ]
+  },
+  3:{name:"Phase 3 — Functional Power",focus:"Single-leg strength, stair mastery, sport prep",
+    flexionTarget:135,gaitTarget:"Normal gait, stairs reciprocal",
+    goals:["Flexion to 135°","Stairs reciprocal (no rail)","Single-leg stance 30s","Mini squat to 60°","Walk 20 min continuously"],
+    gates:[
+      {label:"Flexion ≥ 130°",test:l=>l.flex>=130},
+      {label:"Pain ≤ 2 all day",test:l=>l.painAct<=2&&l.painRest<=2},
+      {label:"Single-leg stance ≥ 25s",test:l=>l.sls>=25},
+      {label:"Swelling = 0",test:l=>l.swell===0}
+    ],
+    sessions:[
+      {name:"AM Mobility",time:"Morning · 20 min",exercises:[
+        {id:"p3.hslide",name:"Heel slides deep",dose:"2×15",how:"Target 130°+. Wall slide variation for extra leverage."},
+        {id:"p3.llld",name:"LLLD stretch",dose:"10 min",how:"Push depth. Should be well past 115° sustained."},
+        {id:"p3.bike",name:"Bike warm-up",dose:"5 min",how:"Low seat, moderate resistance."}
+      ]},
+      {name:"PM Strength & Core",time:"Afternoon · 40 min",exercises:[
+        {id:"p3.msquat",name:"Mini squat (wall)",dose:"3×10 to 45°",how:"Ball between knees. Progress depth as tolerated."},
+        {id:"p3.stepup",name:"Step-ups",dose:"3×10/leg",how:"6 inch step. Push through heel. Control lowering."},
+        {id:"p3.latwalk",name:"Lateral band walks",dose:"3×10 each way",how:"Quarter squat, band at ankles. Keep tension throughout."},
+        {id:"p3.clam",name:"Clamshells (heavier band)",dose:"3×15/side",how:"Medium-heavy band. Strict form."},
+        {id:"p3.pallof",name:"Pallof press",dose:"3×10/side",how:"Band at chest height. Press straight out. Resist rotation."},
+        {id:"p3.splank",name:"Side plank (full)",dose:"3×20s/side",how:"Straight legs. Stack hips."}
+      ]},
+      {name:"Evening Recovery",time:"Evening · 25 min",exercises:[
+        {id:"p3.bike2",name:"Bike",dose:"15 min",how:"Moderate resistance, full circles. Build endurance."},
+        {id:"p3.ice",name:"Ice if needed",dose:"15 min",how:"Only if swelling or soreness > mild."}
+      ]}
+    ]
+  },
+  4:{name:"Phase 4 — Return to Life",focus:"Full function, sport readiness, independence",
+    flexionTarget:140,gaitTarget:"All terrain, jog prep",
+    goals:["Flexion ≥ 135°","Full squat to 90°","Jog 2 min pain-free","Single-leg stance 45s","All daily activities pain-free"],
+    gates:[
+      {label:"Flexion ≥ 135°",test:l=>l.flex>=135},
+      {label:"Pain = 0 at rest",test:l=>l.painRest===0},
+      {label:"Single-leg stance ≥ 40s",test:l=>l.sls>=40},
+      {label:"No swelling after exercise",test:l=>l.swell===0}
+    ],
+    sessions:[
+      {name:"AM Mobility",time:"Morning · 15 min",exercises:[
+        {id:"p4.bike",name:"Bike warm-up",dose:"10 min",how:"Moderate-high resistance. Full ROM circles."},
+        {id:"p4.dstretch",name:"Dynamic stretches",dose:"5 min",how:"Leg swings, hip circles, walking lunges (shallow)."}
+      ]},
+      {name:"PM Strength & Core",time:"Afternoon · 45 min",exercises:[
+        {id:"p4.squat",name:"Bodyweight squat",dose:"3×12 to 90°",how:"Free-standing. Knees track over toes. Slow eccentric."},
+        {id:"p4.stepup",name:"Step-ups (8 inch)",dose:"3×10/leg",how:"Standard stair height. Add dumbbells if tolerated."},
+        {id:"p4.slrdl",name:"Single-leg RDL",dose:"3×8/side",how:"Light weight. Hinge at hips, slight knee bend."},
+        {id:"p4.lunge",name:"Reverse lunge",dose:"3×8/leg",how:"Step back, lower until back knee nearly touches floor."},
+        {id:"p4.pallof",name:"Pallof press overhead",dose:"3×10/side",how:"Press out + up. Max anti-rotation challenge."},
+        {id:"p4.plank",name:"Plank",dose:"3×30s",how:"Forearms. Straight line head to heels. Breathe."}
+      ]},
+      {name:"Evening Recovery",time:"Evening · 25 min",exercises:[
+        {id:"p4.walk",name:"Walk / light jog intervals",dose:"20 min",how:"Walk 4 min, jog 1 min if cleared. Flat surface only."},
+        {id:"p4.ice2",name:"Ice PRN",dose:"15 min",how:"Only if needed post-workout."}
+      ]}
+    ]
+  }
+};
+
+
+
+/* ── Core Training constants ── */
+const LK_CORE = "kr.core.v1";
+
+const CORE_GROUPS = {
+  "anti-ext":{
+    name:"Anterior Core (Anti-Extension)",
+    short:"Anterior",
+    color:"#4ea3ff",
+    why:"Prevents low-back arching during walking and stair climbing. Protects the knee by keeping pelvis neutral — critical at 290 lbs.",
+    muscles:"Rectus abdominis, transverse abdominis",
+    stopRules:["Stop if low-back pain > 3/10","Skip if hip flexor cramping persists","Regress if unable to keep back flat"]
+  },
+  "anti-rot":{
+    name:"Anti-Rotation / Stability",
+    short:"Anti-Rot",
+    color:"#3ddc97",
+    why:"Prevents trunk twisting that sends shear forces to the healing patella. Essential for safe single-leg stance and stair turns.",
+    muscles:"Obliques, transverse abdominis, multifidus",
+    stopRules:["Stop if sharp lateral trunk pain","Skip if balance is unsafe without support"]
+  },
+  "lateral":{
+    name:"Lateral Core",
+    short:"Lateral",
+    color:"#ffb454",
+    why:"Controls lateral trunk sway during gait. Weak lateral core = Trendelenburg gait = excessive knee valgus stress.",
+    muscles:"Obliques, quadratus lumborum",
+    stopRules:["Stop if shoulder pain with side plank","Caution: modified (from knees) may load knee — use hip version if needed"]
+  },
+  "posterior":{
+    name:"Posterior Chain",
+    short:"Posterior",
+    color:"#ff6b6b",
+    why:"Glutes and back extensors power hip extension for walking. Weak posterior chain forces the quad to compensate — overloading the healing patella.",
+    muscles:"Erector spinae, glutes, multifidus",
+    stopRules:["Stop if anterior knee pain with prone exercises","Use supine alternatives if kneeling causes pain","Skip supermans if patella pressure bothers you"]
+  },
+  "hip-pelvic":{
+    name:"Hip / Pelvic Stabilizers",
+    short:"Hip Stab",
+    color:"#c084fc",
+    why:"#1 priority for knee recovery. Weak hip abductors cause knee valgus (caving in) — the biggest risk for re-injury and pain.",
+    muscles:"Gluteus medius/minimus, deep hip rotators, pelvic floor",
+    stopRules:["Stop if lateral hip snapping","Reduce reps if hip bursitis flares","Skip standing exercises if balance is unsafe"]
+  },
+  "breathing":{
+    name:"Breathing / Bracing",
+    short:"Breathing",
+    color:"#67e8f9",
+    why:"Foundation of all core work. Proper diaphragmatic bracing creates intra-abdominal pressure that protects the spine AND allows the knee to move with less compensatory guarding.",
+    muscles:"Diaphragm, pelvic floor, transverse abdominis",
+    stopRules:["Stop if dizzy or lightheaded","Never hold breath during other exercises — exhale on exertion"]
+  }
+};
+
+const CORE_EXERCISES = [
+  // Anti-Extension
+  {id:"c.deadbug",name:"Dead Bug",groups:["anti-ext","breathing"],difficulty:"beginner",phases:[1,2,3,4],
+    dose:"3×8/side",hold:null,
+    desc:"Lie on back, arms up, knees at 90°. Extend opposite arm+leg while keeping low back FLAT on floor. 3s out, 3s back.",
+    kneeSafe:"Fully supine — zero knee load. Safe all phases.",
+    safetyFlags:[],guideKey:"dead-bug"},
+  {id:"c.hollow",name:"Hollow Body Hold",groups:["anti-ext"],difficulty:"intermediate",phases:[2,3,4],
+    dose:"3×15–20s hold",hold:true,
+    desc:"Lie on back, press low back into floor. Extend arms overhead and legs straight (modify: bend knees). Hold position.",
+    kneeSafe:"Supine. Bend knees if straight-leg version aggravates knee.",
+    safetyFlags:["modify_if_flex_limited"]},
+  {id:"c.plank",name:"Forearm Plank",groups:["anti-ext","anti-rot"],difficulty:"beginner",phases:[1,2,3,4],
+    dose:"3×20–30s",hold:true,
+    desc:"Forearms on floor, body straight from head to heels (or knees for modified). Squeeze glutes, brace abs, breathe.",
+    kneeSafe:"From toes: no knee flexion needed. From knees: minimal knee load but monitor patella comfort.",
+    safetyFlags:["kneeling_option"]},
+  {id:"c.revcurl",name:"Reverse Crunch",groups:["anti-ext"],difficulty:"intermediate",phases:[2,3,4],
+    dose:"3×12",hold:null,
+    desc:"Lie on back, knees bent 90°. Curl hips off floor toward ribs, then lower slowly. Don't use momentum.",
+    kneeSafe:"Supine, knees stay bent — minimal knee demand. Safe if hip flexors aren't cramping.",
+    safetyFlags:[]},
+
+  // Anti-Rotation
+  {id:"c.pallof",name:"Pallof Press",groups:["anti-rot"],difficulty:"intermediate",phases:[2,3,4],
+    dose:"3×10/side, 3s hold",hold:null,
+    desc:"Stand sideways to band anchor. Hold at chest, press straight out. Resist rotation. 3s hold at full extension.",
+    kneeSafe:"Standing with slight knee bend. Low knee demand.",
+    safetyFlags:[],guideKey:"pallof-press"},
+  {id:"c.birddog",name:"Bird-Dog",groups:["anti-rot","posterior"],difficulty:"beginner",phases:[1,2,3,4],
+    dose:"3×8/side, 5s hold",hold:true,
+    desc:"On hands and knees, extend opposite arm+leg. Hold 5s. Keep hips level — no rotation. Slow and controlled.",
+    kneeSafe:"Kneeling required — use thick pad under knees. Skip if kneeling causes anterior knee pain.",
+    safetyFlags:["requires_kneeling"]},
+  {id:"c.halfkneel",name:"Half-Kneeling Chop",groups:["anti-rot","lateral"],difficulty:"advanced",phases:[3,4],
+    dose:"3×10/side",hold:null,
+    desc:"Half-kneeling, band high. Pull diagonally across body from high to low. Resist trunk rotation.",
+    kneeSafe:"Half-kneeling on involved leg = test. Ensure ≥100° flexion and no patella pain. Use pad.",
+    safetyFlags:["requires_kneeling","needs_100_flex"]},
+
+  // Lateral Core
+  {id:"c.sideplank",name:"Side Plank (Hip)",groups:["lateral"],difficulty:"beginner",phases:[1,2,3,4],
+    dose:"3×15–20s/side",hold:true,
+    desc:"Lie on side, bottom elbow under shoulder. Bend BOTH hips and knees 45°. Lift hips. Straight line from knees to shoulders.",
+    kneeSafe:"Modified from knees at 45° — low patella load. Progress to straight-leg in phase 3+.",
+    safetyFlags:["kneeling_option"],guideKey:"side-plank"},
+  {id:"c.suitcase",name:"Suitcase Carry",groups:["lateral","hip-pelvic"],difficulty:"intermediate",phases:[2,3,4],
+    dose:"3×30s/side",hold:true,
+    desc:"Hold weight in one hand, walk slowly. Keep trunk STRAIGHT — don't lean. The working side is the OPPOSITE side of the weight.",
+    kneeSafe:"Walking exercise — ensure stable gait first. Use crutch in other hand if needed.",
+    safetyFlags:["needs_stable_gait"]},
+  {id:"c.sidebend",name:"Side-Lying Lateral Crunch",groups:["lateral"],difficulty:"beginner",phases:[1,2,3,4],
+    dose:"3×12/side",hold:null,
+    desc:"Lie on side, hand behind head. Lift upper body laterally off floor (small range). Squeeze oblique at top.",
+    kneeSafe:"Side-lying — no knee load at all. Safe all phases.",
+    safetyFlags:[]},
+
+  // Posterior Chain
+  {id:"c.glutebridge",name:"Glute Bridge",groups:["posterior","hip-pelvic"],difficulty:"beginner",phases:[1,2,3,4],
+    dose:"3×12, 5s hold",hold:true,
+    desc:"Lie on back, knees bent ~60°, feet flat. Drive through heels, lift hips. Squeeze glutes hard at top. Hold 5s.",
+    kneeSafe:"Supine. Knee at ~60° — well within ROM for 90°+ patients. Safe all phases.",
+    safetyFlags:[],guideKey:"glute-bridge"},
+  {id:"c.slbridge",name:"Single-Leg Glute Bridge",groups:["posterior","hip-pelvic"],difficulty:"advanced",phases:[3,4],
+    dose:"3×8/side, 3s hold",hold:true,
+    desc:"Same as glute bridge but one leg extended. All load on one leg. Drive through heel. Hold 3s at top.",
+    kneeSafe:"High demand on involved knee as stabilizer. Only when flexion >110° and pain-free bridge.",
+    safetyFlags:["needs_110_flex"]},
+  {id:"c.prone-ext",name:"Prone Back Extension",groups:["posterior"],difficulty:"beginner",phases:[1,2,3,4],
+    dose:"3×10, 3s hold",hold:true,
+    desc:"Lie face down, hands at temples. Lift chest 3–4 inches off floor. Squeeze back muscles at top. Lower slowly.",
+    kneeSafe:"Prone — patella may get pressure. Place a pillow under thighs if anterior knee discomfort.",
+    safetyFlags:["prone_pressure"]},
+
+  // Hip / Pelvic Stabilizers
+  {id:"c.clam",name:"Clamshells",groups:["hip-pelvic"],difficulty:"beginner",phases:[1,2,3,4],
+    dose:"3×15/side (band)",hold:null,
+    desc:"Side-lying, knees bent 45°, heels together. Open top knee like a clamshell. Don't roll pelvis. Band above knees.",
+    kneeSafe:"Side-lying, low knee demand. Safe all phases. THE key exercise for knee valgus prevention.",
+    safetyFlags:[],guideKey:"clamshells"},
+  {id:"c.sideabd",name:"Side-Lying Hip Abduction",groups:["hip-pelvic"],difficulty:"beginner",phases:[1,2,3,4],
+    dose:"3×15/side",hold:null,
+    desc:"Side-lying, bottom knee bent for stability. Top leg straight. Lift straight leg 30–45°. Slow lower. Don't rotate.",
+    kneeSafe:"Straight top leg — zero knee flexion demand. Safe all phases.",
+    safetyFlags:[]},
+  {id:"c.firehyd",name:"Fire Hydrant",groups:["hip-pelvic","anti-rot"],difficulty:"beginner",phases:[1,2,3,4],
+    dose:"3×12/side",hold:null,
+    desc:"On hands and knees, lift bent knee out to side. Keep hips level. Squeeze glute at top. Lower slowly.",
+    kneeSafe:"Kneeling — use thick pad. Knee stays bent ~90° throughout. Skip if kneeling hurts.",
+    safetyFlags:["requires_kneeling"]},
+  {id:"c.latwalk",name:"Lateral Band Walks",groups:["hip-pelvic"],difficulty:"intermediate",phases:[2,3,4],
+    dose:"3×10 each way",hold:null,
+    desc:"Band above ankles, quarter squat stance. Step sideways maintaining band tension. Don't let knees cave.",
+    kneeSafe:"Standing in quarter squat. Requires stable stance and >90° flexion. Phase 2+ only.",
+    safetyFlags:["needs_stable_gait"],guideKey:"lateral-walks"},
+
+  // Breathing / Bracing
+  {id:"c.diaphragm",name:"Diaphragmatic Breathing",groups:["breathing"],difficulty:"beginner",phases:[1,2,3,4],
+    dose:"3×5 breaths (5s in, 7s out)",hold:null,
+    desc:"Lie on back, hand on chest and belly. Breathe INTO the belly — chest stays still. Slow 5s inhale, 7s exhale.",
+    kneeSafe:"Supine, no movement. Safe always. Do before every session to activate deep core.",
+    safetyFlags:[]},
+  {id:"c.brace",name:"Coordinated Bracing",groups:["breathing","anti-ext"],difficulty:"beginner",phases:[1,2,3,4],
+    dose:"3×8 (10s hold)",hold:true,
+    desc:"Lie on back. Inhale into belly, then BRACE abs (like someone will poke you) WITHOUT holding breath. Hold 10s breathing normally.",
+    kneeSafe:"Supine, isometric. Safe always. This is the foundation for all other core exercises.",
+    safetyFlags:[]},
+  {id:"c.pelvtilt",name:"Pelvic Tilt",groups:["breathing","anti-ext"],difficulty:"beginner",phases:[1,2,3,4],
+    dose:"3×10 (5s hold)",hold:true,
+    desc:"Lie on back, knees bent. Flatten low back into floor by tilting pelvis. Hold 5s. Release. Coordinate with exhale.",
+    kneeSafe:"Supine, minimal knee bend. Safe always.",
+    safetyFlags:[]},
+  {id:"c.supmar",name:"Supine Marching",groups:["breathing","hip-pelvic"],difficulty:"beginner",phases:[1,2,3,4],
+    dose:"3×10/side",hold:null,
+    desc:"Lie on back, knees bent. Brace core. Slowly lift one foot 4 inches off floor (march). Alternate. Pelvis stays level.",
+    kneeSafe:"Supine. Minimal hip flexion range needed. Safe all phases. Great brace + hip coordination.",
+    safetyFlags:[]}
+];
+
+/* ── Core helper functions ── */
+function loadCore(){ if(!_storageOK) return{logs:{},ratings:{},routine:null}; try{return JSON.parse(localStorage.getItem(LK_CORE))||{logs:{},ratings:{},routine:null}}catch(e){return{logs:{},ratings:{},routine:null}} }
+function saveCore(d){ if(_storageOK) localStorage.setItem(LK_CORE,JSON.stringify(d)) }
+
+function coreExSafeForPhase(ex, ph){
+  if(!ex.phases.includes(ph)) return false;
+  return true;
+}
+function coreExSafetyLabel(ex){
+  if(ex.safetyFlags.length===0) return '<span class="safe-badge ok">✓ Knee-safe</span>';
+  const flags = ex.safetyFlags;
+  let label = '';
+  if(flags.includes('requires_kneeling')) label += 'Kneeling ';
+  if(flags.includes('prone_pressure')) label += 'Prone ';
+  if(flags.includes('needs_100_flex')) label += '≥100° flex ';
+  if(flags.includes('needs_110_flex')) label += '≥110° flex ';
+  if(flags.includes('needs_stable_gait')) label += 'Stable gait ';
+  if(flags.includes('modify_if_flex_limited')) label += 'Modify if stiff ';
+  return '<span class="safe-badge caution">⚠ '+label.trim()+'</span>';
+}
+
+/* ── Core sub-tab state ── */
+let coreTab = 'overview';
+function setCoreTab(t){
+  coreTab = t;
+  document.querySelectorAll('.core-tabs button').forEach(b=>b.classList.toggle('active',b.dataset.ct===t));
+  ['coreOverview','coreWorkout','coreBuilder','coreProgress'].forEach(id=>{
+    document.getElementById(id).style.display = 'none';
+  });
+  const map = {overview:'coreOverview',workout:'coreWorkout',builder:'coreBuilder',coreprogress:'coreProgress'};
+  document.getElementById(map[t]).style.display = 'block';
+  if(t==='overview') renderCoreOverview();
+  if(t==='workout') renderCoreWorkout();
+  if(t==='builder') renderCoreBuilder();
+  if(t==='coreprogress') renderCoreProgressTab();
+}
+
+/* ── Render: Core Overview ── */
+function renderCoreOverview(){
+  const ph = currentPhase();
+  const core = loadCore();
+  const ratings = core.ratings || {};
+
+  // Body map SVG (front view showing functional zones)
+  let html = '<div class="core-body-map">';
+  html += `<svg viewBox="0 0 220 360" xmlns="http://www.w3.org/2000/svg">
+    <text x="110" y="16" text-anchor="middle" fill="#8aa0b8" font-size="11" font-weight="bold">FRONT</text>
+    <!-- Head/neck -->
+    <ellipse cx="110" cy="45" rx="22" ry="26" fill="#1e2c3f" stroke="#27384f" stroke-width="1.5"/>
+    <!-- Torso -->
+    <path d="M78,70 Q65,90 62,140 L62,210 Q62,240 85,260 L135,260 Q158,240 158,210 L158,140 Q155,90 142,70 Z" fill="#1e2c3f" stroke="#27384f" stroke-width="1.5"/>
+    <!-- Arms -->
+    <line x1="65" y1="80" x2="30" y2="180" stroke="#27384f" stroke-width="8" stroke-linecap="round"/>
+    <line x1="155" y1="80" x2="190" y2="180" stroke="#27384f" stroke-width="8" stroke-linecap="round"/>
+    <!-- Legs -->
+    <line x1="90" y1="260" x2="85" y2="350" stroke="#27384f" stroke-width="10" stroke-linecap="round"/>
+    <line x1="130" y1="260" x2="135" y2="350" stroke="#27384f" stroke-width="10" stroke-linecap="round"/>
+
+    <!-- Functional zones (clickable) -->
+    <!-- Anterior core -->
+    <rect class="zone" x="85" y="120" width="50" height="50" rx="6" fill="${CORE_GROUPS['anti-ext'].color}" opacity="${ratingOpacity(ratings['anti-ext'])}" data-action="scrollToCoreGroup" data-arg="anti-ext"/>
+    <text x="110" y="150" text-anchor="middle" fill="#06121f" font-size="9" font-weight="bold" pointer-events="none">ANTERIOR</text>
+
+    <!-- Lateral core (obliques) -->
+    <rect class="zone" x="63" y="130" width="20" height="40" rx="4" fill="${CORE_GROUPS['lateral'].color}" opacity="${ratingOpacity(ratings['lateral'])}" data-action="scrollToCoreGroup" data-arg="lateral"/>
+    <rect class="zone" x="137" y="130" width="20" height="40" rx="4" fill="${CORE_GROUPS['lateral'].color}" opacity="${ratingOpacity(ratings['lateral'])}" data-action="scrollToCoreGroup" data-arg="lateral"/>
+
+    <!-- Anti-rotation (center deep) -->
+    <ellipse class="zone" cx="110" cy="190" rx="22" ry="14" fill="${CORE_GROUPS['anti-rot'].color}" opacity="${ratingOpacity(ratings['anti-rot'])}" data-action="scrollToCoreGroup" data-arg="anti-rot"/>
+    <text x="110" y="194" text-anchor="middle" fill="#06121f" font-size="8" font-weight="bold" pointer-events="none">ANTI-ROT</text>
+
+    <!-- Breathing (upper abdomen / diaphragm) -->
+    <ellipse class="zone" cx="110" cy="108" rx="20" ry="10" fill="${CORE_GROUPS['breathing'].color}" opacity="${ratingOpacity(ratings['breathing'])}" data-action="scrollToCoreGroup" data-arg="breathing"/>
+    <text x="110" y="112" text-anchor="middle" fill="#06121f" font-size="7" font-weight="bold" pointer-events="none">BREATH</text>
+
+    <!-- Hip stabilizers -->
+    <ellipse class="zone" cx="87" cy="245" rx="18" ry="12" fill="${CORE_GROUPS['hip-pelvic'].color}" opacity="${ratingOpacity(ratings['hip-pelvic'])}" data-action="scrollToCoreGroup" data-arg="hip-pelvic"/>
+    <ellipse class="zone" cx="133" cy="245" rx="18" ry="12" fill="${CORE_GROUPS['hip-pelvic'].color}" opacity="${ratingOpacity(ratings['hip-pelvic'])}" data-action="scrollToCoreGroup" data-arg="hip-pelvic"/>
+    <text x="110" y="248" text-anchor="middle" fill="#06121f" font-size="7" font-weight="bold" pointer-events="none">HIP STAB</text>
+  </svg>`;
+
+  // Back view
+  html += `<svg viewBox="0 0 220 360" xmlns="http://www.w3.org/2000/svg">
+    <text x="110" y="16" text-anchor="middle" fill="#8aa0b8" font-size="11" font-weight="bold">BACK</text>
+    <ellipse cx="110" cy="45" rx="22" ry="26" fill="#1e2c3f" stroke="#27384f" stroke-width="1.5"/>
+    <path d="M78,70 Q65,90 62,140 L62,210 Q62,240 85,260 L135,260 Q158,240 158,210 L158,140 Q155,90 142,70 Z" fill="#1e2c3f" stroke="#27384f" stroke-width="1.5"/>
+    <line x1="65" y1="80" x2="30" y2="180" stroke="#27384f" stroke-width="8" stroke-linecap="round"/>
+    <line x1="155" y1="80" x2="190" y2="180" stroke="#27384f" stroke-width="8" stroke-linecap="round"/>
+    <line x1="90" y1="260" x2="85" y2="350" stroke="#27384f" stroke-width="10" stroke-linecap="round"/>
+    <line x1="130" y1="260" x2="135" y2="350" stroke="#27384f" stroke-width="10" stroke-linecap="round"/>
+
+    <!-- Posterior chain -->
+    <rect class="zone" x="88" y="110" width="44" height="70" rx="6" fill="${CORE_GROUPS['posterior'].color}" opacity="${ratingOpacity(ratings['posterior'])}" data-action="scrollToCoreGroup" data-arg="posterior"/>
+    <text x="110" y="150" text-anchor="middle" fill="#06121f" font-size="9" font-weight="bold" pointer-events="none">POSTERIOR</text>
+
+    <!-- Lateral (back view) -->
+    <rect class="zone" x="64" y="125" width="22" height="40" rx="4" fill="${CORE_GROUPS['lateral'].color}" opacity="${ratingOpacity(ratings['lateral'])}" data-action="scrollToCoreGroup" data-arg="lateral"/>
+    <rect class="zone" x="134" y="125" width="22" height="40" rx="4" fill="${CORE_GROUPS['lateral'].color}" opacity="${ratingOpacity(ratings['lateral'])}" data-action="scrollToCoreGroup" data-arg="lateral"/>
+
+    <!-- Glute / hip stabilizers (back view) -->
+    <ellipse class="zone" cx="90" cy="230" rx="22" ry="20" fill="${CORE_GROUPS['hip-pelvic'].color}" opacity="${ratingOpacity(ratings['hip-pelvic'])}" data-action="scrollToCoreGroup" data-arg="hip-pelvic"/>
+    <ellipse class="zone" cx="130" cy="230" rx="22" ry="20" fill="${CORE_GROUPS['hip-pelvic'].color}" opacity="${ratingOpacity(ratings['hip-pelvic'])}" data-action="scrollToCoreGroup" data-arg="hip-pelvic"/>
+    <text x="110" y="234" text-anchor="middle" fill="#06121f" font-size="8" font-weight="bold" pointer-events="none">GLUTES</text>
+  </svg>`;
+  html += '</div>';
+
+  // Legend
+  html += '<div class="card" style="margin-bottom:16px"><div style="display:flex;gap:16px;flex-wrap:wrap;font-size:12px">';
+  html += '<span>Brightness = self-rated strength:</span>';
+  html += '<span style="color:var(--muted)">&#9632; Not rated</span>';
+  html += '<span style="color:var(--warn)">&#9632; Weak (1–2)</span>';
+  html += '<span style="color:var(--good)">&#9632; Strong (4–5)</span>';
+  html += '</div></div>';
+
+  // Group cards
+  Object.entries(CORE_GROUPS).forEach(([key, grp])=>{
+    const exs = CORE_EXERCISES.filter(e=>e.groups.includes(key) && coreExSafeForPhase(e,ph));
+    const rating = ratings[key] || 0;
+    html += `<div class="core-group-card" id="core-grp-${key}">`;
+    html += `<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap">`;
+    html += `<h4 style="color:${grp.color}">${grp.name}</h4>`;
+    html += `<div class="core-rating">Strength: `;
+    for(let i=1;i<=5;i++){
+      html += `<button type="button" class="${i<=rating?'filled':''}" data-action="setCoreRating" data-arg="${key},${i}" style="${i<=rating?'background:'+grp.color+';border-color:'+grp.color:''}">${i}</button>`;
+    }
+    html += `</div></div>`;
+    html += `<p class="why">${grp.why}</p>`;
+    html += `<p style="font-size:12px;color:var(--accent)">Muscles: ${grp.muscles}</p>`;
+
+    html += `<div style="margin-top:8px"><b style="font-size:12px">Available exercises (Phase ${ph}):</b></div>`;
+    exs.forEach(e=>{
+      const guideBtn = e.guideKey ? ` <span class="guide-link" data-action="showGuide" data-arg="${e.guideKey}">📖</span>` : '';
+      html += `<div class="core-ex-item"><span style="flex:1"><b>${e.name}</b> <span style="color:var(--accent);font-size:11px">${e.dose}</span>${coreExSafetyLabel(e)}${guideBtn}</span><span class="pill">${e.difficulty}</span></div>`;
+    });
+    if(exs.length===0) html += '<p style="color:var(--muted);font-size:12px">No exercises available at current phase.</p>';
+
+    // Stop rules
+    html += `<div style="margin-top:8px">`;
+    grp.stopRules.forEach(r=>html+=`<div class="core-stop-rule">🛑 ${r}</div>`);
+    html += `</div></div>`;
+  });
+
+  document.getElementById('coreOverview').innerHTML = html;
+}
+
+function ratingOpacity(r){
+  if(!r || r===0) return '0.25';
+  if(r<=2) return '0.5';
+  if(r<=3) return '0.65';
+  return '0.85';
+}
+
+function scrollToCoreGroup(key){
+  const el = document.getElementById('core-grp-'+key);
+  if(el) el.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function setCoreRating(group, val){
+  const core = loadCore();
+  if(!core.ratings) core.ratings = {};
+  core.ratings[group] = val;
+  // Also log the rating with date for progress tracking
+  if(!core.ratingHistory) core.ratingHistory = [];
+  const today = todayISO();
+  // Remove today's entry for this group if exists
+  core.ratingHistory = core.ratingHistory.filter(r=>!(r.date===today && r.group===group));
+  core.ratingHistory.push({date:today,group:group,value:val});
+  saveCore(core);
+  renderCoreOverview();
+}
+
+/* ── Render: Core Workout ── */
+function renderCoreWorkout(){
+  const ph = currentPhase();
+  const core = loadCore();
+  const dateKey = getSelectedDate();
+  const dayLog = (core.logs && core.logs[dateKey]) || {};
+  const checks = dayLog.checks || {};
+
+  // Group exercises by function
+  const available = CORE_EXERCISES.filter(e=>coreExSafeForPhase(e,ph));
+  const byGroup = {};
+  available.forEach(e=>{
+    e.groups.forEach(g=>{
+      if(!byGroup[g]) byGroup[g]=[];
+      if(!byGroup[g].find(x=>x.id===e.id)) byGroup[g].push(e);
+    });
+  });
+
+  let html = '<div class="date-bar">';
+  html += `<button type="button" class="ghost" data-action="shiftCoreDay" data-arg="-1">← Prev</button>`;
+  html += `<input type="date" id="coreDatePick" value="${dateKey}" data-action="coreDateChange">`;
+  html += `<button type="button" class="ghost" data-action="shiftCoreDay" data-arg="1">Next →</button>`;
+  html += `<button type="button" class="ghost" data-action="goCoreDayToday">Today</button>`;
+  html += `<span class="day-label" id="coreDayLabel"></span></div>`;
+
+  let totalEx = 0, doneEx = 0;
+  Object.entries(CORE_GROUPS).forEach(([key, grp])=>{
+    const exs = byGroup[key] || [];
+    if(exs.length === 0) return;
+    let groupDone = 0;
+    exs.forEach(e=>{totalEx++;if(checks[e.id])groupDone++; doneEx+=checks[e.id]?1:0;});
+    html += `<div class="card"><div class="session-head"><h3 style="color:${grp.color}">${grp.short}</h3><span class="progress">${groupDone}/${exs.length}</span></div>`;
+    exs.forEach(e=>{
+      const guideBtn = e.guideKey ? ` <span class="guide-link" data-action="showGuide" data-arg="${e.guideKey}">📖</span>` : '';
+      html += `<div class="core-ex-item"><input type="checkbox" data-ceid="${e.id}" ${checks[e.id]?'checked':''} data-action="toggleCoreEx" data-eid="${e.id}"><span style="flex:1"><b>${e.name}</b> <span style="color:var(--accent);font-size:11px">${e.dose}</span>${coreExSafetyLabel(e)}${guideBtn}<br><span style="color:var(--muted);font-size:11px">${e.desc}</span></span></div>`;
+    });
+    html += `</div>`;
+  });
+
+  // Workout notes
+  html += `<div class="card"><h3>Core session notes</h3>`;
+  html += `<div class="grid2">`;
+  html += `<div><label>Core difficulty felt (1–10)</label><input type="number" id="coreDiff" min="1" max="10" value="${dayLog.difficulty||''}"></div>`;
+  html += `<div><label>Any knee irritation? (0=none, 1=mild, 2=mod, 3=bad)</label><input type="number" id="coreKneeIrr" min="0" max="3" value="${dayLog.kneeIrr!=null?dayLog.kneeIrr:''}"></div>`;
+  html += `</div>`;
+  html += `<label>Notes</label><textarea id="coreNotes" placeholder="How did the core session feel?">${dayLog.notes||''}</textarea>`;
+  html += `<div style="margin-top:10px"><button type="button" class="primary" data-action="saveCoreDay">Save core log</button></div>`;
+  html += `<p id="coreSaveMsg" style="color:var(--good);font-size:12px;margin-top:6px"></p>`;
+  html += `</div>`;
+
+  document.getElementById('coreWorkout').innerHTML = html;
+
+  // Update day label
+  const d = new Date(dateKey+'T12:00:00');
+  const lbl = document.getElementById('coreDayLabel');
+  if(lbl) lbl.textContent = d.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'}) + (dateKey===todayISO()?' (Today)':'');
+}
+
+function shiftCoreDay(delta){
+  const el = document.getElementById('coreDatePick');
+  const d = new Date(el.value+'T12:00:00');
+  d.setDate(d.getDate()+delta);
+  el.value = iso(d);
+  renderCoreWorkout();
+}
+function goCoreDayToday(){
+  document.getElementById('coreDatePick').value = todayISO();
+  renderCoreWorkout();
+}
+function onCoreDateChange(){ renderCoreWorkout() }
+function getCoreDate(){ return document.getElementById('coreDatePick')?.value || todayISO() }
+
+function toggleCoreEx(eid, checked){
+  const core = loadCore();
+  const dk = getCoreDate();
+  if(!core.logs[dk]) core.logs[dk] = {};
+  if(!core.logs[dk].checks) core.logs[dk].checks = {};
+  core.logs[dk].checks[eid] = checked;
+  saveCore(core);
+}
+
+function saveCoreDay(){
+  const core = loadCore();
+  const dk = getCoreDate();
+  if(!core.logs[dk]) core.logs[dk] = {};
+  const e = core.logs[dk];
+  e.difficulty = parseInt(document.getElementById('coreDiff').value,10)||null;
+  e.kneeIrr = parseInt(document.getElementById('coreKneeIrr').value,10)||null;
+  e.notes = document.getElementById('coreNotes').value.trim();
+  // Calc adherence
+  const ph = currentPhase();
+  const avail = CORE_EXERCISES.filter(ex=>coreExSafeForPhase(ex,ph));
+  const checks = e.checks||{};
+  let done = 0; avail.forEach(ex=>{if(checks[ex.id])done++});
+  e.adherence = avail.length ? Math.round(100*done/avail.length) : 0;
+  saveCore(core);
+  document.getElementById('coreSaveMsg').textContent = '✓ Core log saved for '+dk;
+  setTimeout(()=>{const el=document.getElementById('coreSaveMsg');if(el)el.textContent=''},3000);
+}
+
+/* ── Render: Core Builder ── */
+function renderCoreBuilder(){
+  const ph = currentPhase();
+  const core = loadCore();
+  const saved = core.routine || null;
+
+  let html = '<div class="card"><h3>Smart Routine Builder</h3>';
+  html += '<p style="color:var(--muted);font-size:13px">Auto-generates a balanced core routine — one exercise per functional pattern. Select difficulty level:</p>';
+  html += '<div style="display:flex;gap:8px;margin:12px 0">';
+  html += '<button type="button" class="ghost" data-action="buildRoutine" data-arg="beginner">Beginner</button>';
+  html += '<button type="button" class="ghost" data-action="buildRoutine" data-arg="intermediate">Intermediate</button>';
+  html += '<button type="button" class="ghost" data-action="buildRoutine" data-arg="advanced">Advanced</button>';
+  html += '<button type="button" class="primary" data-action="buildRoutine" data-arg="balanced">Balanced (Recommended)</button>';
+  html += '</div></div>';
+
+  html += '<div id="builtRoutine"></div>';
+
+  // Show saved routine if exists
+  if(saved){
+    html += '<div class="card"><h3>�� My Saved Routine</h3>';
+    html += `<p style="color:var(--muted);font-size:12px">Saved: ${saved.date} · ${saved.exercises.length} exercises · ~${saved.estTime} min</p>`;
+    saved.exercises.forEach(e=>{
+      const ex = CORE_EXERCISES.find(x=>x.id===e);
+      if(!ex) return;
+      const guideBtn = ex.guideKey ? ` <span class="guide-link" data-action="showGuide" data-arg="${ex.guideKey}">📖</span>` : '';
+      html += `<div class="core-ex-item"><span style="flex:1"><b>${ex.name}</b> <span style="color:var(--accent);font-size:11px">${ex.dose}</span>${coreExSafetyLabel(ex)}${guideBtn}<br><span style="color:var(--muted);font-size:11px">${ex.kneeSafe}</span></span><span class="pill">${ex.groups.map(g=>CORE_GROUPS[g]?.short||g).join(', ')}</span></div>`;
+    });
+    html += '<div style="margin-top:10px"><button type="button" class="danger" data-action="clearRoutine">Clear saved routine</button></div>';
+    html += '</div>';
+  }
+
+  document.getElementById('coreBuilder').innerHTML = html;
+}
+
+function buildRoutine(level){
+  const ph = currentPhase();
+  const available = CORE_EXERCISES.filter(e=>coreExSafeForPhase(e,ph));
+
+  // Pick one exercise per functional group, prioritizing the requested difficulty
+  const routine = [];
+  const used = new Set();
+  const groupOrder = ['breathing','anti-ext','anti-rot','lateral','posterior','hip-pelvic'];
+
+  groupOrder.forEach(grp=>{
+    const candidates = available.filter(e=>e.groups.includes(grp) && !used.has(e.id));
+    if(candidates.length===0) return;
+
+    let pick;
+    if(level==='balanced'){
+      // Mix: prefer intermediate, fallback to beginner
+      pick = candidates.find(e=>e.difficulty==='intermediate') || candidates.find(e=>e.difficulty==='beginner') || candidates[0];
+    } else {
+      pick = candidates.find(e=>e.difficulty===level) || candidates[0];
+    }
+    if(pick){
+      routine.push(pick);
+      used.add(pick.id);
+    }
+  });
+
+  const estTime = routine.length * 3; // ~3 min per exercise avg
+
+  let html = '<div class="card"><h3>Generated Routine — '+level.charAt(0).toUpperCase()+level.slice(1)+'</h3>';
+  html += `<p style="color:var(--muted);font-size:12px">${routine.length} exercises · ~${estTime} min · Phase ${ph}</p>`;
+
+  routine.forEach((ex,i)=>{
+    const guideBtn = ex.guideKey ? ` <span class="guide-link" data-action="showGuide" data-arg="${ex.guideKey}">📖</span>` : '';
+    html += `<div class="core-routine-card">`;
+    html += `<div style="display:flex;justify-content:space-between;align-items:baseline"><b>${i+1}. ${ex.name}</b><span class="pill">${ex.difficulty}</span></div>`;
+    html += `<div style="color:var(--accent);font-size:12px;margin:4px 0">${ex.dose} ${coreExSafetyLabel(ex)}${guideBtn}</div>`;
+    html += `<div style="font-size:12px;color:var(--muted)">${ex.desc}</div>`;
+    html += `<div style="font-size:11px;color:var(--good);margin-top:4px">🦵 ${ex.kneeSafe}</div>`;
+    html += `<div style="font-size:11px;color:var(--muted);margin-top:2px">Targets: ${ex.groups.map(g=>CORE_GROUPS[g]?.short||g).join(' + ')}</div>`;
+    html += `</div>`;
+  });
+
+  html += `<div style="margin-top:10px"><button type="button" class="primary" data-action="saveRoutine" data-arg='${JSON.stringify(routine.map(e=>e.id))}' data-time="${estTime}">💾 Save as My Routine</button></div>`;
+  html += '</div>';
+
+  document.getElementById('builtRoutine').innerHTML = html;
+}
+
+function saveRoutine(ids, estTime){
+  const core = loadCore();
+  core.routine = {exercises:ids, date:todayISO(), estTime:estTime};
+  saveCore(core);
+  renderCoreBuilder();
+}
+function clearRoutine(){
+  if(!confirm('Clear saved routine?')) return;
+  const core = loadCore();
+  core.routine = null;
+  saveCore(core);
+  renderCoreBuilder();
+}
+
+/* ── Render: Core Progress ── */
+let chCoreRadar, chCoreTrend;
+function renderCoreProgressTab(){
+  const core = loadCore();
+  const ratings = core.ratings || {};
+  const logs = core.logs || {};
+  const dates = Object.keys(logs).sort();
+
+  let html = '';
+
+  // KPIs
+  const totalSessions = dates.filter(d=>logs[d].checks && Object.values(logs[d].checks).some(v=>v)).length;
+  const avgAdh = dates.length ? Math.round(dates.reduce((a,d)=>a+(logs[d].adherence||0),0)/dates.length) : 0;
+  const streak = calcCoreStreak(logs);
+
+  html += '<div class="row">';
+  html += `<div class="card stat"><div class="l">Core sessions</div><div class="v">${totalSessions}</div></div>`;
+  html += `<div class="card stat"><div class="l">Avg adherence</div><div class="v">${avgAdh}%</div></div>`;
+  html += `<div class="card stat"><div class="l">Current streak</div><div class="v">${streak}d</div></div>`;
+  html += `<div class="card stat"><div class="l">Groups rated</div><div class="v">${Object.keys(ratings).length}/6</div></div>`;
+  html += '</div>';
+
+  // Radar chart + trend
+  html += '<div class="card"><h3>Core strength snapshot</h3><div class="radar-wrap"><canvas id="chCoreRadar" width="340" height="340"></canvas>';
+  html += '<div style="flex:1;min-width:200px"><h4 style="margin-top:0">Group ratings</h4>';
+  Object.entries(CORE_GROUPS).forEach(([key,grp])=>{
+    const r = ratings[key]||0;
+    const bar = '█'.repeat(r)+'░'.repeat(5-r);
+    html += `<div style="font-size:12px;margin:4px 0"><span style="color:${grp.color}">${grp.short}</span>: <span style="font-family:monospace">${bar}</span> ${r}/5</div>`;
+  });
+  html += '</div></div></div>';
+
+  // Adherence over time
+  html += '<div class="card"><h3>Core adherence over time</h3><canvas id="chCoreTrend" height="120"></canvas></div>';
+
+  // Log history table
+  html += '<div class="card"><h3>Core log history</h3><div style="overflow-x:auto"><table><thead><tr><th>Date</th><th>Exercises</th><th>Adherence</th><th>Difficulty</th><th>Knee Irr.</th><th>Notes</th></tr></thead><tbody>';
+  dates.slice().reverse().forEach(d=>{
+    const l = logs[d];
+    const checks = l.checks||{};
+    const done = Object.values(checks).filter(v=>v).length;
+    html += `<tr><td>${d}</td><td>${done}</td><td>${l.adherence!=null?l.adherence+'%':'-'}</td><td>${l.difficulty||'-'}</td><td>${l.kneeIrr!=null?l.kneeIrr:'-'}</td><td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${l.notes||''}</td></tr>`;
+  });
+  if(dates.length===0) html += '<tr><td colspan="6" style="color:var(--muted)">No core sessions logged yet.</td></tr>';
+  html += '</tbody></table></div></div>';
+
+  document.getElementById('coreProgress').innerHTML = html;
+
+  // Draw charts
+  drawCoreCharts(core);
+}
+
+function calcCoreStreak(logs){
+  let streak = 0;
+  let d = new Date();
+  while(true){
+    const key = iso(d);
+    const log = logs[key];
+    if(log && log.checks && Object.values(log.checks).some(v=>v)){
+      streak++;
+      d.setDate(d.getDate()-1);
+    } else break;
+  }
+  return streak;
+}
+
+function drawCoreCharts(core){
+  if(typeof Chart === 'undefined') return;
+  const ratings = core.ratings || {};
+  const logs = core.logs || {};
+  const dates = Object.keys(logs).sort().slice(-30);
+
+  try{
+  // Radar
+  if(chCoreRadar) chCoreRadar.destroy();
+  const radarLabels = Object.values(CORE_GROUPS).map(g=>g.short);
+  const radarData = Object.keys(CORE_GROUPS).map(k=>ratings[k]||0);
+  const radarColors = Object.values(CORE_GROUPS).map(g=>g.color);
+
+  chCoreRadar = new Chart(document.getElementById('chCoreRadar'),{
+    type:'radar',
+    data:{
+      labels:radarLabels,
+      datasets:[{
+        label:'Current strength',
+        data:radarData,
+        backgroundColor:'rgba(78,163,255,0.15)',
+        borderColor:'#4ea3ff',
+        pointBackgroundColor:radarColors,
+        pointBorderColor:radarColors,
+        borderWidth:2,
+        pointRadius:5
+      }]
+    },
+    options:{
+      responsive:true,
+      maintainAspectRatio:true,
+      scales:{r:{min:0,max:5,ticks:{stepSize:1,color:'#8aa0b8',backdropColor:'transparent'},grid:{color:'#27384f'},pointLabels:{color:'#e7eef7',font:{size:11}}}},
+      plugins:{legend:{display:false}}
+    }
+  });
+
+  // Trend line
+  if(chCoreTrend) chCoreTrend.destroy();
+  chCoreTrend = new Chart(document.getElementById('chCoreTrend'),{
+    type:'line',
+    data:{
+      labels:dates.map(d=>d.slice(5)),
+      datasets:[{
+        label:'Core adherence %',
+        data:dates.map(d=>logs[d]?.adherence||0),
+        borderColor:'#3ddc97',
+        backgroundColor:'rgba(61,220,151,0.1)',
+        fill:true,
+        tension:0.3,
+        pointRadius:3
+      }]
+    },
+    options:{
+      responsive:true,
+      maintainAspectRatio:true,
+      scales:{
+        x:{ticks:{color:'#8aa0b8',maxRotation:45,font:{size:10}},grid:{color:'#27384f'}},
+        y:{min:0,max:100,ticks:{color:'#8aa0b8'},grid:{color:'#27384f'}}
+      },
+      plugins:{legend:{labels:{color:'#8aa0b8'}}}
+    }
+  });
+  }catch(e){console.warn('Core chart error:',e)}
+}
+
+/* ── Render: Core (master) ── */
+function renderCore(){
+  setCoreTab(coreTab);
+}
+
+/* ── Storage helpers ── */
+function loadLogs(){ if(!_storageOK) return {}; try{return JSON.parse(localStorage.getItem(LK_LOGS))||{}}catch(e){return{}} }
+function saveLogs(d){ if(_storageOK) localStorage.setItem(LK_LOGS,JSON.stringify(d)) }
+function loadSettings(){
+  if(!_storageOK) return defaultSettings();
+  try{return JSON.parse(localStorage.getItem(LK_SET))||defaultSettings()}catch(e){return defaultSettings()}
+}
+function saveSettingsObj(s){ if(_storageOK) localStorage.setItem(LK_SET,JSON.stringify(s)) }
+function defaultSettings(){
+  const d=new Date(); d.setDate(d.getDate()-84);
+  return {surgery:iso(d),phase:1,phaseStart:iso(new Date())}
+}
+function iso(d){ return d.toISOString().slice(0,10) }
+function todayISO(){ return iso(new Date()) }
+function daysBetween(a,b){ return Math.round((new Date(b)-new Date(a))/864e5) }
+
+/* ── Date picker state ── */
+let selectedDateStr = todayISO();
+function getSelectedDate(){ return selectedDateStr }
+function setSelectedDate(s){
+  selectedDateStr = s;
+  document.getElementById('selectedDate').value = s;
+  updateDateLabel();
+  renderToday();
+}
+function shiftDay(delta){
+  const d = new Date(selectedDateStr + 'T12:00:00');
+  d.setDate(d.getDate()+delta);
+  setSelectedDate(iso(d));
+}
+function goToday(){ setSelectedDate(todayISO()) }
+function onDateChange(){ setSelectedDate(document.getElementById('selectedDate').value) }
+function updateDateLabel(){
+  const d = new Date(selectedDateStr+'T12:00:00');
+  const opts = {weekday:'long',month:'long',day:'numeric'};
+  const label = d.toLocaleDateString('en-US',opts);
+  const el = document.getElementById('todayDateLabel');
+  if(el) el.textContent = (selectedDateStr === todayISO()) ? label + ' (Today)' : label;
+}
+
+/* ── Phase helpers ── */
+function currentPhase(){ return loadSettings().phase }
+function phaseData(n){ return PHASES[n]||PHASES[1] }
+
+/* ── Adherence calc ── */
+function adherenceFor(logEntry, phNum){
+  if(!logEntry||!logEntry.checks) return 0;
+  const ph = phaseData(phNum);
+  let total=0, done=0;
+  ph.sessions.forEach(s=>{s.exercises.forEach(e=>{total++;if(logEntry.checks[e.id])done++})});
+  return total?Math.round(100*done/total):0;
+}
+
+/* ── Guide filter state ── */
+let guideFilter = 'all';
+function setGuideFilter(f){
+  guideFilter = f;
+  document.querySelectorAll('.guide-filter button').forEach(b=>{
+    b.classList.toggle('active', b.dataset.gf===f);
+  });
+  renderGuide();
+}
+
+/* ── Show guide for specific exercise ── */
+function showGuide(key){
+  switchTab('guide');
+  guideFilter = 'all';
+  document.querySelectorAll('.guide-filter button').forEach(b=>b.classList.toggle('active',b.dataset.gf==='all'));
+  document.getElementById('guideSearch').value = '';
+  renderGuide();
+  setTimeout(()=>{
+    const el = document.getElementById('guide-'+key);
+    if(el){
+      el.scrollIntoView({behavior:'smooth',block:'start'});
+      el.style.outline = '2px solid var(--accent)';
+      setTimeout(()=>el.style.outline='none',3000);
+    }
+  },100);
+}
+
+/* ── Tab navigation ── */
+function switchTab(id){
+  document.querySelectorAll('nav button').forEach(b=>{
+    b.classList.toggle('active',b.dataset.tab===id);
+    if(b.dataset.tab===id) b.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
+  });
+  document.querySelectorAll('main section').forEach(s=>s.classList.toggle('active',s.id===id));
+  window.scrollTo({top:0});
+  if(id==='today') renderToday();
+  if(id==='activities') renderActivities();
+  if(id==='guide') renderGuide();
+  if(id==='core') renderCore();
+  if(id==='phase') renderPhase();
+  if(id==='progress') renderProgress();
+  if(id==='reports') renderReports();
+}
+/* ── Event delegation — no inline handlers, works on iOS WKWebView ── */
+document.addEventListener('click', function(e){
+  var el = e.target instanceof Element ? e.target : e.target.parentElement;
+  if(!el) return;
+  // Nav tabs
+  var navBtn = el.closest('nav button[data-tab]');
+  if(navBtn){ switchTab(navBtn.dataset.tab); return; }
+  // Action dispatch (replaces all inline onclick handlers)
+  var a = el.closest('[data-action]');
+  if(!a) return;
+  var action = a.dataset.action, arg = a.dataset.arg;
+  switch(action){
+    case 'shiftDay': shiftDay(parseInt(arg)); break;
+    case 'goToday': goToday(); break;
+    case 'saveDay': saveDay(); break;
+    case 'loadSelectedDay': loadSelectedDay(); break;
+    case 'setGuideFilter': setGuideFilter(arg); break;
+    case 'setCoreTab': setCoreTab(arg); break;
+    case 'advancePhase': advancePhase(); break;
+    case 'regressPhase': regressPhase(); break;
+    case 'exportCSV': exportCSV(); break;
+    case 'clearLogs': if(confirm('Delete all logs?')){if(_storageOK)localStorage.removeItem(LK_LOGS);renderAll()} break;
+    case 'saveSettings': saveSettings(); break;
+    case 'exportBackup': exportBackup(); break;
+    case 'triggerImport': document.getElementById('importFile').click(); break;
+    case 'showGuide': showGuide(arg); break;
+    case 'scrollToCoreGroup': scrollToCoreGroup(arg); break;
+    case 'setCoreRating': var p=arg.split(','); setCoreRating(p[0],parseInt(p[1])); break;
+    case 'shiftCoreDay': shiftCoreDay(parseInt(arg)); break;
+    case 'goCoreDayToday': goCoreDayToday(); break;
+    case 'saveCoreDay': saveCoreDay(); break;
+    case 'buildRoutine': buildRoutine(arg); break;
+    case 'clearRoutine': clearRoutine(); break;
+    case 'saveRoutine': saveRoutine(JSON.parse(arg),parseInt(a.dataset.time)); break;
+    default: if(typeof window[action]==='function') window[action](arg);
+  }
+}, false);
+/* ── Change/input delegation (replaces onchange/oninput attributes) ── */
+document.addEventListener('change', function(e){
+  var el = e.target;
+  if(el.id==='selectedDate'){ onDateChange(); return; }
+  if(el.id==='importFile'){ importBackup(e); return; }
+  if(el.id==='coreDatePick'){ onCoreDateChange(); return; }
+  if(el.dataset && el.dataset.action==='toggleEx'){ toggleEx(el.dataset.eid, el.checked); return; }
+  if(el.dataset && el.dataset.action==='toggleCoreEx'){ toggleCoreEx(el.dataset.eid, el.checked); return; }
+}, false);
+document.addEventListener('input', function(e){
+  if(e.target.id==='guideSearch') renderGuide();
+}, false);
+
+/* ── Render: Today ── */
+function renderToday(){
+  const ph = currentPhase();
+  const pd = phaseData(ph);
+  const logs = loadLogs();
+  const dateKey = getSelectedDate();
+  const entry = logs[dateKey] || {};
+  const checks = entry.checks || {};
+  const isToday = dateKey === todayISO();
+
+  let html = '';
+  pd.sessions.forEach(sess=>{
+    let done=0, total=sess.exercises.length;
+    sess.exercises.forEach(e=>{if(checks[e.id])done++});
+    html += `<div class="card"><div class="session-head"><h3>${sess.name}</h3><span class="progress">${done}/${total} done &middot; ${sess.time}</span></div>`;
+    sess.exercises.forEach(e=>{
+      const gk = EXERCISE_GUIDE_MAP[e.id];
+      const guideBtn = gk ? ` <span class="guide-link" data-action="showGuide" data-arg="${gk}">&#x1F4D6; Guide</span>` : '';
+      html += `<div class="ex"><input type="checkbox" data-eid="${e.id}" ${checks[e.id]?'checked':''} data-action="toggleEx" data-eid="${e.id}"><div class="body"><span class="name">${e.name}</span><span class="dose">${e.dose}</span>${guideBtn}<div class="how">${e.how}</div></div></div>`;
+    });
+    html += `</div>`;
+  });
+  document.getElementById('todaySessions').innerHTML = html;
+
+  // Populate log form with existing data
+  const fields = ['flex','lag','painRest','painAct','swell','sleep','sls'];
+  const ids =    ['logFlex','logLag','logPainRest','logPainAct','logSwell','logSleep','logSls'];
+  fields.forEach((f,i)=>{
+    const el = document.getElementById(ids[i]);
+    if(el) el.value = entry[f]!=null ? entry[f] : '';
+  });
+  const cEl = document.getElementById('logCrutch');
+  if(cEl) cEl.value = entry.crutch!=null ? entry.crutch : '2';
+  const nEl = document.getElementById('logNotes');
+  if(nEl) nEl.value = entry.notes || '';
+
+  document.getElementById('saveMsg').textContent = '';
+  updateDateLabel();
+  updateHeader();
+}
+
+/* ── Toggle exercise checkbox ── */
+function toggleEx(eid, checked){
+  const logs = loadLogs();
+  const dk = getSelectedDate();
+  if(!logs[dk]) logs[dk] = {};
+  if(!logs[dk].checks) logs[dk].checks = {};
+  logs[dk].checks[eid] = checked;
+  saveLogs(logs);
+}
+
+/* ── Save daily log ── */
+function saveDay(){
+  const logs = loadLogs();
+  const dk = getSelectedDate();
+  if(!logs[dk]) logs[dk] = {};
+  const e = logs[dk];
+  e.phase = currentPhase();
+  e.flex = num('logFlex'); e.lag = num('logLag');
+  e.painRest = num('logPainRest'); e.painAct = num('logPainAct');
+  e.swell = num('logSwell'); e.crutch = num('logCrutch');
+  e.sleep = numF('logSleep'); e.sls = num('logSls');
+  e.notes = document.getElementById('logNotes').value.trim();
+  e.adherence = adherenceFor(e, e.phase);
+  saveLogs(logs);
+  document.getElementById('saveMsg').textContent = '✓ Saved for ' + dk;
+  setTimeout(()=>{document.getElementById('saveMsg').textContent=''},3000);
+}
+function loadSelectedDay(){ renderToday() }
+function num(id){ const v=document.getElementById(id).value; return v===''?null:parseInt(v,10) }
+function numF(id){ const v=document.getElementById(id).value; return v===''?null:parseFloat(v) }
+
+/* ── Render: Activities ── */
+function renderActivities(){
+  const ph = currentPhase();
+  const pd = phaseData(ph);
+  document.getElementById('actPhaseName').textContent = pd.name;
+  let html = '';
+  pd.sessions.forEach(sess=>{
+    html += `<div class="card"><h3>${sess.name} <span class="pill">${sess.time}</span></h3>`;
+    sess.exercises.forEach(e=>{
+      const gk = EXERCISE_GUIDE_MAP[e.id];
+      const guideBtn = gk ? ` <span class="guide-link" data-action="showGuide" data-arg="${gk}">&#x1F4D6; Guide</span>` : '';
+      html += `<div class="ex"><div class="body"><span class="name">${e.name}</span><span class="dose">${e.dose}</span>${guideBtn}<div class="how">${e.how}</div></div></div>`;
+    });
+    html += `</div>`;
+  });
+  document.getElementById('actContent').innerHTML = html;
+}
+
+/* ── Render: Guide ── */
+function renderGuide(){
+  const search = (document.getElementById('guideSearch').value||'').toLowerCase();
+  let html = '';
+  Object.entries(GUIDE).forEach(([key, g])=>{
+    if(guideFilter!=='all' && g.category!==guideFilter) return;
+    if(search && !g.title.toLowerCase().includes(search) && !g.overview.toLowerCase().includes(search)) return;
+    html += `<div class="guide-card" id="guide-${key}">`;
+    html += `<h3>${g.title}</h3>`;
+    html += `<div class="phase-badge">Category: ${g.category} &middot; Phases: ${g.phases.join(', ')}</div>`;
+    html += `<p>${g.overview}</p>`;
+
+    if(g.diagram){
+      html += `<div class="diagram">${g.diagram}</div>`;
+    }
+
+    html += `<div class="section-title">Steps</div><ol>`;
+    g.steps.forEach(s=>html+=`<li>${s}</li>`);
+    html += `</ol>`;
+
+    html += `<div class="section-title">Pro Tips</div>`;
+    g.tips.forEach(t=>html+=`<div class="tip">&#x2705; ${t}</div>`);
+
+    html += `<div class="section-title">Avoid</div>`;
+    g.avoid.forEach(a=>html+=`<div class="warn-box">&#x26A0;&#xFE0F; ${a}</div>`);
+
+    html += `<div class="section-title">Progression</div><p style="font-size:13px">${g.progression}</p>`;
+    html += `</div>`;
+  });
+  if(!html) html = '<p style="color:var(--muted)">No exercises match your search.</p>';
+  document.getElementById('guideContent').innerHTML = html;
+}
+
+/* ── Render: Phase ── */
+function renderPhase(){
+  const ph = currentPhase();
+  const pd = phaseData(ph);
+  const s = loadSettings();
+  document.getElementById('phCurrent').textContent = pd.name;
+  document.getElementById('phStart').textContent = s.phaseStart;
+  document.getElementById('phDays').textContent = daysBetween(s.phaseStart, todayISO());
+
+  let goalHtml = '';
+  pd.goals.forEach(g=>goalHtml+=`<li>${g}</li>`);
+  document.getElementById('phGoals').innerHTML = goalHtml;
+
+  // Check gates against last 3 logged days
+  const logs = loadLogs();
+  const dates = Object.keys(logs).filter(d=>logs[d].flex!=null).sort().slice(-3);
+  let gateHtml = '';
+  pd.gates.forEach(g=>{
+    const met = dates.length>=3 && dates.every(d=>g.test(logs[d]));
+    gateHtml += `<div class="gate ${met?'met':'not'}">${met?'✅':'❌'} ${g.label}</div>`;
+  });
+  document.getElementById('phGates').innerHTML = gateHtml;
+
+  // Phase overview table
+  let tHtml = '';
+  [1,2,3,4].forEach(n=>{
+    const p=PHASES[n];
+    tHtml += `<tr${n===ph?' style="background:var(--panel2)"':''}><td>${n===ph?'▸ ':''}<b>${p.name}</b></td><td>${p.focus}</td><td>${p.flexionTarget}°</td><td>${p.gaitTarget}</td></tr>`;
+  });
+  document.getElementById('phaseTable').innerHTML = tHtml;
+  document.getElementById('phMsg').textContent = '';
+}
+
+function advancePhase(){
+  const s = loadSettings();
+  if(s.phase>=4){document.getElementById('phMsg').textContent='Already at phase 4!';return}
+  if(!confirm('Advance to Phase '+(s.phase+1)+'? Make sure gates are met.')) return;
+  s.phase++;
+  s.phaseStart = todayISO();
+  saveSettingsObj(s);
+  renderAll();
+}
+function regressPhase(){
+  const s = loadSettings();
+  if(s.phase<=1){document.getElementById('phMsg').textContent='Already at phase 1!';return}
+  if(!confirm('Step back to Phase '+(s.phase-1)+'?')) return;
+  s.phase--;
+  s.phaseStart = todayISO();
+  saveSettingsObj(s);
+  renderAll();
+}
+
+/* ── Render: Progress log ── */
+function renderProgress(){
+  const logs = loadLogs();
+  const dates = Object.keys(logs).sort().reverse();
+  let html = '';
+  dates.forEach(d=>{
+    const e = logs[d];
+    html += `<tr><td>${d}</td><td>${e.phase||'-'}</td><td>${e.flex!=null?e.flex:'-'}</td><td>${e.lag!=null?e.lag:'-'}</td><td>${e.painRest!=null?e.painRest:'-'}</td><td>${e.painAct!=null?e.painAct:'-'}</td><td>${e.swell!=null?e.swell:'-'}</td><td>${e.crutch!=null?e.crutch:'-'}</td><td>${e.sleep!=null?e.sleep:'-'}</td><td>${e.sls!=null?e.sls:'-'}</td><td>${e.adherence!=null?e.adherence+'%':'-'}</td><td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${(e.notes||'').replace(/"/g,'&quot;')}">${e.notes||''}</td></tr>`;
+  });
+  document.querySelector('#logTable tbody').innerHTML = html || '<tr><td colspan="12" style="color:var(--muted)">No logs yet.</td></tr>';
+}
+
+/* ── Mobile-safe download helper ── */
+function mobileDownload(content, filename, mimeType){
+  const blob = new Blob([content],{type:mimeType});
+  // Try native share (best on iOS)
+  if(navigator.share && navigator.canShare && navigator.canShare({files:[new File([blob],filename,{type:mimeType})]})){
+    navigator.share({files:[new File([blob],filename,{type:mimeType})],title:filename}).catch(()=>{});
+    return;
+  }
+  // Standard download link
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url)},200);
+}
+
+/* ── CSV export ── */
+function exportCSV(){
+  const logs = loadLogs();
+  const dates = Object.keys(logs).sort();
+  let csv = 'Date,Phase,Flexion,Lag,PainRest,PainAct,Swelling,Crutch,Sleep,SLS,Adherence,Notes\n';
+  dates.forEach(d=>{
+    const e=logs[d];
+    csv += [d,e.phase,e.flex,e.lag,e.painRest,e.painAct,e.swell,e.crutch,e.sleep,e.sls,e.adherence,'"'+(e.notes||'').replace(/"/g,'""')+'"'].join(',')+'\n';
+  });
+  mobileDownload(csv, 'knee-recovery-'+todayISO()+'.csv', 'text/csv');
+}
+
+/* ── Charts ── */
+let chFlex, chPain, chAdh;
+function renderReports(){
+  const logs = loadLogs();
+  const dates = Object.keys(logs).filter(d=>logs[d].flex!=null).sort();
+  const recent = dates.slice(-30);
+
+  // KPIs
+  const allFlex = dates.map(d=>logs[d].flex).filter(v=>v!=null);
+  const last7 = dates.slice(-7);
+  const avg7Flex = last7.length? (last7.reduce((a,d)=>a+(logs[d].flex||0),0)/last7.length).toFixed(0) : '-';
+  const avg7Pain = last7.length? (last7.reduce((a,d)=>a+((logs[d].painRest||0)+(logs[d].painAct||0))/2,0)/last7.length).toFixed(1) : '-';
+  const avg7Adh = last7.length? (last7.reduce((a,d)=>a+(logs[d].adherence||0),0)/last7.length).toFixed(0)+'%' : '-';
+
+  document.getElementById('rDays').textContent = dates.length;
+  document.getElementById('rBestFlex').textContent = allFlex.length? Math.max(...allFlex)+'°' : '-';
+  document.getElementById('rAvgFlex').textContent = avg7Flex!=='-'? avg7Flex+'°' : '-';
+  document.getElementById('rAvgPain').textContent = avg7Pain;
+  document.getElementById('rAdh').textContent = avg7Adh;
+
+  // Charts (only if Chart.js loaded)
+  const labels = recent.map(d=>d.slice(5));
+  if(typeof Chart === 'undefined'){
+    document.querySelectorAll('#reports canvas').forEach(c=>{c.parentElement.querySelector('h3').insertAdjacentHTML('afterend','<p style="color:var(--muted);font-size:12px">Charts loading… refresh if needed.</p>');});
+    renderAnalysis(logs, dates);
+    return;
+  }
+  if(chFlex){try{chFlex.destroy();chPain.destroy();chAdh.destroy()}catch(e){}}
+
+  const chartOpts = ()=>({responsive:true,maintainAspectRatio:true,plugins:{legend:{labels:{color:'#8aa0b8',font:{size:11}}},title:{display:false}},scales:{x:{ticks:{color:'#8aa0b8',maxRotation:45,font:{size:10}},grid:{color:'#27384f'}},y:{ticks:{color:'#8aa0b8'},grid:{color:'#27384f'}}}});
+
+  try{
+  chFlex = new Chart(document.getElementById('chFlex'),{
+    type:'line',
+    data:{labels,datasets:[
+      {label:'Flexion (°)',data:recent.map(d=>logs[d].flex),borderColor:'#4ea3ff',tension:0.3,fill:false,pointRadius:3},
+      {label:'Lag (°)',data:recent.map(d=>logs[d].lag),borderColor:'#ff6b6b',tension:0.3,fill:false,pointRadius:3}
+    ]},
+    options:chartOpts()
+  });
+  chPain = new Chart(document.getElementById('chPain'),{
+    type:'line',
+    data:{labels,datasets:[
+      {label:'Pain rest',data:recent.map(d=>logs[d].painRest),borderColor:'#ffb454',tension:0.3,fill:false,pointRadius:3},
+      {label:'Pain activity',data:recent.map(d=>logs[d].painAct),borderColor:'#ff6b6b',tension:0.3,fill:false,pointRadius:3}
+    ]},
+    options:chartOpts()
+  });
+  chAdh = new Chart(document.getElementById('chAdh'),{
+    type:'bar',
+    data:{labels,datasets:[
+      {label:'Adherence %',data:recent.map(d=>logs[d].adherence||0),backgroundColor:'#3ddc97'}
+    ]},
+    options:chartOpts()
+  });
+  }catch(e){console.warn('Chart render error:',e)}
+
+  // Auto-analysis
+  renderAnalysis(logs, dates);
+}
+
+function renderAnalysis(logs, dates){
+  let html = '';
+  if(dates.length < 3){
+    html = '<p style="color:var(--muted)">Log at least 3 days for analysis.</p>';
+  } else {
+    const last3 = dates.slice(-3);
+    const last7 = dates.slice(-7);
+
+    // Flexion trend
+    if(last7.length >= 3){
+      const first = logs[last7[0]].flex||0;
+      const last = logs[last7[last7.length-1]].flex||0;
+      const delta = last - first;
+      if(delta > 0) html += `<div class="tip">&#x1F4C8; Flexion improving: +${delta}° over last ${last7.length} sessions. Keep going!</div>`;
+      else if(delta === 0) html += `<div class="warn-box">&#x1F7E1; Flexion plateau detected. Try: more patellar mobs, LLLD stretching, or moist heat before mobility work.</div>`;
+      else html += `<div class="warn-box">&#x1F534; Flexion decreased ${delta}°. Check: swelling increase? pain spike? Possibly over-did it — dial back intensity.</div>`;
+    }
+
+    // Pain trend
+    const avgPainRecent = last3.reduce((a,d)=>a+(logs[d].painAct||0),0)/last3.length;
+    if(avgPainRecent <= 2) html += `<div class="tip">&#x2705; Pain well-controlled (avg ${avgPainRecent.toFixed(1)}/10). Good sign for progression.</div>`;
+    else if(avgPainRecent > 5) html += `<div class="warn-box">&#x26A0;&#xFE0F; Pain elevated (avg ${avgPainRecent.toFixed(1)}/10). Consider reducing exercise intensity or adding more ice.</div>`;
+
+    // Adherence
+    const avgAdh = last7.reduce((a,d)=>a+(logs[d].adherence||0),0)/last7.length;
+    if(avgAdh >= 80) html += `<div class="tip">&#x1F3AF; Adherence ${avgAdh.toFixed(0)}% — excellent compliance!</div>`;
+    else if(avgAdh < 50) html += `<div class="warn-box">&#x26A0;&#xFE0F; Adherence ${avgAdh.toFixed(0)}% — try to complete at least 2 of 3 daily sessions.</div>`;
+
+    // SLS check
+    const slsLast = logs[dates[dates.length-1]].sls;
+    if(slsLast != null){
+      if(slsLast < 10) html += `<div class="warn-box">&#x1F9B5; Single-leg stance ${slsLast}s — focus on balance training (clamshells, lateral walks).</div>`;
+      else if(slsLast >= 30) html += `<div class="tip">&#x1F3C6; Single-leg stance ${slsLast}s — great stability!</div>`;
+    }
+  }
+  document.getElementById('analysis').innerHTML = html;
+}
+
+/* ── Settings ── */
+function renderSettings(){
+  const s = loadSettings();
+  document.getElementById('setSurgery').value = s.surgery;
+  document.getElementById('setPhase').value = s.phase;
+  document.getElementById('setPhaseStart').value = s.phaseStart;
+}
+function saveSettings(){
+  const s = {
+    surgery: document.getElementById('setSurgery').value,
+    phase: parseInt(document.getElementById('setPhase').value,10),
+    phaseStart: document.getElementById('setPhaseStart').value
+  };
+  saveSettingsObj(s);
+  document.getElementById('setMsg').textContent = '✓ Saved';
+  setTimeout(()=>{document.getElementById('setMsg').textContent=''},2000);
+  renderAll();
+}
+
+/* ── Backup / Restore ── */
+function exportBackup(){
+  const data = {logs:loadLogs(),settings:loadSettings(),core:loadCore(),exported:todayISO()};
+  mobileDownload(JSON.stringify(data,null,2), 'knee-recovery-backup-'+todayISO()+'.json', 'application/json');
+}
+function importBackup(evt){
+  const file = evt.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      const data = JSON.parse(e.target.result);
+      if(data.logs) saveLogs(data.logs);
+      if(data.settings) saveSettingsObj(data.settings);
+      if(data.core) saveCore(data.core);
+      alert('Backup restored!');
+      renderAll();
+    }catch(err){alert('Invalid backup file: '+err.message)}
+  };
+  reader.readAsText(file);
+}
+
+/* ── Header update ── */
+function updateHeader(){
+  const s = loadSettings();
+  const pd = phaseData(s.phase);
+  document.getElementById('hdrPhase').textContent = pd.name.split('—')[0].trim();
+  const day = daysBetween(s.surgery, todayISO());
+  document.getElementById('hdrDay').textContent = day>=0 ? day : '—';
+}
+
+/* ── Master render ── */
+function renderAll(){
+  updateHeader();
+  renderToday();
+  renderSettings();
+}
+
+/* ── Init ── */
+(function init(){
+  try{
+    if(!_storageOK){
+      saveSettingsObj(defaultSettings());
+    } else if(!localStorage.getItem(LK_SET)){
+      saveSettingsObj(defaultSettings());
+    }
+    document.getElementById('selectedDate').value = todayISO();
+    renderAll();
+    if(!_storageOK){
+      document.querySelector('main').insertAdjacentHTML('afterbegin',
+        '<div style="background:var(--warn);color:#06121f;padding:10px 14px;border-radius:8px;margin-bottom:12px;font-size:13px">⚠️ Storage unavailable — logs won\'t persist. Open this file directly in your browser (not from email preview).</div>');
+    }
+  }catch(e){
+    console.error('Init error:',e);
+    document.querySelector('main').insertAdjacentHTML('afterbegin',
+      '<div style="background:#ff6b6b;color:#fff;padding:12px;border-radius:8px;margin-bottom:12px">⚠️ App error: '+e.message+'. Try refreshing.</div>');
+  }
+})();
+</script>
+</body>
+</html>
